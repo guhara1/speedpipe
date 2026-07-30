@@ -13,6 +13,7 @@
 
 지역 데이터(assets/js/regions-data.js)는 tools/build_regions.py 가 따로 만든다.
 """
+import collections
 import io
 import json
 import os
@@ -100,6 +101,33 @@ def count_dongs(region):
         n += len(c["dongs"]) if "dongs" in c else sum(len(d["dongs"]) for d in c["districts"])
     return n
 
+
+def build_area_labels():
+    """제목·h1이 전국에서 겹치지 않도록 상위 지역을 붙인 이름을 만든다.
+
+    남구·중구처럼 여러 시·도에 같은 이름이 있고, 중앙동은 31곳에 있다.
+    기본은 "상위지역 이름"(강남구 역삼동)이고, 그래도 겹치면 시·도까지 붙인다
+    (부산 중구 중앙동).
+    """
+    base = {}
+    for r in REGIONS:
+        sd = r["short"]
+        for c in r["children"]:
+            base[("sgg", sd, c["name"], "", "")] = ("%s %s" % (sd, c["name"]), sd)
+            if "districts" in c:
+                for g in c["districts"]:
+                    base[("gu", sd, c["name"], g["name"], "")] = ("%s %s" % (c["name"], g["name"]), sd)
+                    for d in g["dongs"]:
+                        base[("dong", sd, c["name"], g["name"], d)] = ("%s %s" % (g["name"], d), sd)
+            else:
+                for d in c["dongs"]:
+                    base[("dong", sd, c["name"], "", d)] = ("%s %s" % (c["name"], d), sd)
+    cnt = collections.Counter(lab for lab, _sd in base.values())
+    return {k: (lab if cnt[lab] == 1 else "%s %s" % (sd, lab))
+            for k, (lab, sd) in base.items()}
+
+
+LABELS = build_area_labels()
 
 TOTAL_SGG = sum(len(r["children"]) for r in REGIONS)
 TOTAL_GU = sum(len(c.get("districts", [])) for r in REGIONS for c in r["children"])
@@ -1044,9 +1072,11 @@ def build_area(region, c, g=None):
     path = (("regions/%s/%s/%s.html" % (sido_slug(region), c["name"], g["name"])) if g
             else ("regions/%s/%s.html" % (sido_slug(region), c["name"])))
     canonical = canon(path)
+    qual = LABELS[("gu", region["short"], c["name"], g["name"], "")] if g \
+        else LABELS[("sgg", region["short"], c["name"], "", "")]
     seed = stable(region["short"], c["name"], g["name"] if g else "")
     fid, cap = PHOTOS[seed % len(PHOTOS)]
-    alt = "%s 배관공사·하수구막힘 시공 현장 — %s" % (label, BRAND)
+    alt = "%s 배관공사·하수구막힘 시공 현장 — %s" % (qual, BRAND)
 
     has_gu = g is None and "districts" in c
     if has_gu:
@@ -1099,13 +1129,13 @@ def build_area(region, c, g=None):
         crumb_trail.append((c["name"], sgg_href(region, c, depth)))
     crumb_trail.append((label, ""))
 
-    html = head("%s 배관공사·하수구막힘 출동 | %s" % (label, BRAND),
+    html = head("%s 배관공사·하수구막힘 출동 | %s" % (qual, BRAND),
                 "%s %s 배관공사, 하수구막힘, 누수탐지, 변기막힘, 수전교체 24시간 출동. %d개 지역 전역 방문, 견적 무료. 상담 %s"
                 % (BRAND, full, n_child, TEL),
                 depth, canonical, schema, photo_abs(fid, 1200), alt)
     html += header(depth, "regions")
-    html += page_hero("%s · 지역 출동" % esc(parent_label),
-                      "%s <span class=\"nb\">배관공사·하수구막힘</span>" % esc(label),
+    html += page_hero("%s · 지역 출동" % esc(region["area"] if g is None else parent_label),
+                      "%s <span class=\"nb\">배관공사·하수구막힘</span>" % esc(qual),
                       esc(INTROS[seed % len(INTROS)].format(full=full)),
                       ["%d곳 전역 출동" % n_child, "24시간 접수", "방문 견적 무료"],
                       breadcrumb_html(crumb_trail, depth),
@@ -1196,9 +1226,10 @@ def build_dong(region, c, g, dong, siblings):
     path = (("regions/%s/%s/%s/%s.html" % (sido_slug(region), c["name"], g["name"], dong)) if g
             else ("regions/%s/%s/%s.html" % (sido_slug(region), c["name"], dong)))
     canonical = canon(path)
+    qual = LABELS[("dong", region["short"], c["name"], g["name"] if g else "", dong)]
     seed = stable(region["short"], c["name"], g["name"] if g else "", dong)
     fid, cap = PHOTOS[seed % len(PHOTOS)]
-    alt = "%s %s 배관공사·하수구막힘 시공 현장 — %s" % (parent, dong, BRAND)
+    alt = "%s 배관공사·하수구막힘 시공 현장 — %s" % (qual, BRAND)
 
     parent_href = gu_href(region, c, g, depth) if g else sgg_href(region, c, depth)
     near = [(d, dong_href(region, c, g, d, depth)) for d in siblings if d != dong]
@@ -1230,13 +1261,13 @@ def build_dong(region, c, g, dong, siblings):
         crumb_trail.append((g["name"], gu_href(region, c, g, depth)))
     crumb_trail.append((dong, ""))
 
-    html = head("%s %s 배관공사·하수구막힘 출동 | %s" % (parent, dong, BRAND),
+    html = head("%s 배관공사·하수구막힘 출동 | %s" % (qual, BRAND),
                 "%s %s 배관공사, 하수구막힘, 누수탐지, 변기막힘, 수전교체 24시간 출동. 방문 견적 무료, 확정 금액 승인 후 시공. 상담 %s"
                 % (BRAND, full, TEL),
                 depth, canonical, schema, photo_abs(fid, 1200), alt)
     html += header(depth, "regions")
-    html += page_hero("%s · 읍면동 출동" % esc(parent),
-                      "%s <span class=\"nb\">배관공사·하수구막힘</span>" % esc(dong),
+    html += page_hero("%s · %s" % (esc(region["short"]), esc(parent)),
+                      "%s <span class=\"nb\">배관공사·하수구막힘</span>" % esc(qual),
                       esc(INTROS[seed % len(INTROS)].format(full=short_full)),
                       ["24시간 접수", "방문 견적 무료", "확정 금액 승인 후 시공"],
                       breadcrumb_html(crumb_trail, depth),
