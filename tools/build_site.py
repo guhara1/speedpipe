@@ -943,7 +943,7 @@ def build_region(region):
                 depth, canonical, schema, photo_abs(fid, 1200), alt)
     html += header(depth, "regions")
     html += page_hero("%s · 지역별 출동" % region["area"],
-                      "%s 배관공사·하수구막힘 출동" % esc(short),
+                      "%s <span class=\"nb\">배관공사·하수구막힘</span> 출동" % esc(short),
                       esc(INTROS[seed % len(INTROS)].format(full=region["name"])),
                       ["%d개 시·군·구" % n_sgg, "%d개 읍·면·동" % n_dong, "24시간 접수"],
                       breadcrumb_html([("지역별 출동", "index.html"), (short, "")], depth),
@@ -1105,7 +1105,7 @@ def build_area(region, c, g=None):
                 depth, canonical, schema, photo_abs(fid, 1200), alt)
     html += header(depth, "regions")
     html += page_hero("%s · 지역 출동" % esc(parent_label),
-                      "%s 배관공사·하수구막힘" % esc(label),
+                      "%s <span class=\"nb\">배관공사·하수구막힘</span>" % esc(label),
                       esc(INTROS[seed % len(INTROS)].format(full=full)),
                       ["%d곳 전역 출동" % n_child, "24시간 접수", "방문 견적 무료"],
                       breadcrumb_html(crumb_trail, depth),
@@ -1236,7 +1236,7 @@ def build_dong(region, c, g, dong, siblings):
                 depth, canonical, schema, photo_abs(fid, 1200), alt)
     html += header(depth, "regions")
     html += page_hero("%s · 읍면동 출동" % esc(parent),
-                      "%s 배관공사·하수구막힘" % esc(dong),
+                      "%s <span class=\"nb\">배관공사·하수구막힘</span>" % esc(dong),
                       esc(INTROS[seed % len(INTROS)].format(full=short_full)),
                       ["24시간 접수", "방문 견적 무료", "확정 금액 승인 후 시공"],
                       breadcrumb_html(crumb_trail, depth),

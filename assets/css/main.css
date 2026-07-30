@@ -75,7 +75,7 @@ table{border-collapse:collapse;width:100%;}
 
 /* ---------- 타이포 ---------- */
 h1,h2,h3,h4,h5{color:var(--ink);font-weight:800;line-height:1.28;letter-spacing:-.022em;}
-h1{font-size:clamp(2rem,1.35rem + 2.7vw,3.4rem);line-height:1.16;letter-spacing:-.035em;}
+h1{font-size:clamp(1.7rem,1.15rem + 2.8vw,3.4rem);line-height:1.18;letter-spacing:-.035em;}
 h2{font-size:clamp(1.6rem,1.2rem + 1.7vw,2.4rem);letter-spacing:-.03em;}
 h3{font-size:clamp(1.12rem,1.02rem + .4vw,1.35rem);}
 h4{font-size:1.02rem;}
@@ -610,6 +610,8 @@ a.chip:hover{border-color:var(--brand);color:var(--brand);background:var(--brand
 }
 .page-hero__inner{padding-block:clamp(40px,5.5vw,74px);}
 .page-hero h1{color:#fff;max-width:22ch;text-wrap:balance;}
+/* "배관공사·하수구막힘"이 가운뎃점 앞에서 갈라지지 않도록 한 덩어리로 묶는다. */
+.nb{white-space:nowrap;}
 .page-hero .lead{color:#A9C0D8;margin-top:16px;}
 .page-hero .btn-row{margin-top:28px;}
 .breadcrumb{display:flex;flex-wrap:wrap;align-items:center;gap:8px;font-size:.82rem;color:#7E97B2;padding-block:16px 4px;font-family:var(--mono);}

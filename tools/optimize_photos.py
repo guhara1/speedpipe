@@ -74,11 +74,12 @@ def to_webp(raw, max_w, target_bytes):
                 hi = q - 1
         if best is not None:
             return best, work.size
-        if width <= 400:                       # 더 줄일 수 없으면 최저 품질로 저장
+        if width <= 320:
+            # 여기까지 왔으면 목표에 못 맞춘 것. 최저 품질로 저장하고 호출부가 경고한다.
             buf = io.BytesIO()
-            work.save(buf, "WEBP", quality=30, method=6)
+            work.save(buf, "WEBP", quality=25, method=6)
             return buf.getvalue(), work.size
-        width = int(width * 0.85)
+        width = int(width * 0.82)
 
 
 def main():
@@ -118,7 +119,8 @@ def main():
             with open(path, "wb") as fh:
                 fh.write(data)
             total += len(data)
-            sizes.append("%dx%d %.1fKB" % (dim[0], dim[1], len(data) / 1024.0))
+            over = " ⚠목표초과" if len(data) > target else ""
+            sizes.append("%dx%d %.1fKB%s" % (dim[0], dim[1], len(data) / 1024.0, over))
         print("[%2d/%d] %s  %s  (%s)" % (i, len(PHOTOS), fid, " · ".join(sizes), cap))
 
     print("\n총 %d장 · 합계 %.1fKB" % (len(PHOTOS) - len(failed), total / 1024.0))
