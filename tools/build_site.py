@@ -36,6 +36,21 @@ RATING, RATING_COUNT = rating_summary()
 PAGES = []          # (경로, 우선순위, 변경주기, 묶음)
 
 
+DESC_MAX = 80          # 네이버 서치어드바이저 권고치
+LONG_DESCS = []
+
+
+def desc80(text):
+    """페이지 설명문을 80자 이내로 유지한다(네이버 권고). 넘으면 잘라내고 기록한다."""
+    text = " ".join(text.split())
+    if len(text) <= DESC_MAX:
+        return text
+    LONG_DESCS.append((len(text), text))
+    cut = text[:DESC_MAX - 1]
+    sp = cut.rfind(" ")
+    return (cut[:sp] if sp > DESC_MAX - 20 else cut) + "…"
+
+
 def esc(s):
     return (str(s).replace("&", "&amp;").replace("<", "&lt;")
             .replace(">", "&gt;").replace('"', "&quot;"))
@@ -161,6 +176,7 @@ CAT_ICON = {"누수 진단 · 시공": "drop", "막힘 제거": "clog", "교체 
 
 # ------------------------------------------------------------------ head
 def head(title, desc, depth, canonical, schema=None, og_image=None, og_alt=""):
+    desc = desc80(desc)           # meta description 과 og:description 에 함께 쓰인다
     u = up(depth)
     img = og_image or photo_abs(PHOTOS[0][0], 1200)
     parts = ['<!DOCTYPE html>', '<html lang="ko">', '<head>',
@@ -711,8 +727,8 @@ def build_index():
                "url": SITE + "/", "inLanguage": "ko-KR"}]
 
     html = head("%s | 전국 배관공사·하수구막힘·누수탐지 24시간 출동" % BRAND,
-                "하수구막힘, 배관막힘, 변기막힘, 누수탐지, 수전교체까지 전국 16개 시·도 %s개 읍·면·동 24시간 출동. "
-                "방문 견적 무료, 확정 금액 승인 후 시공. 상담 %s" % (DONG_FMT, TEL),
+                "전국 16개 시·도 %s개 읍·면·동 배관 출동. 하수구막힘·누수탐지 24시간, 견적 무료. %s"
+                % (DONG_FMT, TEL),
                 depth, "/", schema, photo_abs(PHOTOS[0][0], 1200), "스피드배관 시공 현장")
     html += header(depth)
     html += """
@@ -925,8 +941,8 @@ def build_service(svc):
     ]
 
     html = head("%s 비용·출동 안내 | %s" % (name, BRAND),
-                "%s %s 평균 비용 %s, 소요 %s. 전국 24시간 출동, 방문 견적 무료. 상담 %s"
-                % (BRAND, name, svc["price"], svc["eta"], TEL),
+                "%s 평균 %s, 소요 %s. 전국 24시간 출동, 견적 무료. %s"
+                % (name, svc["price"], svc["eta"], TEL),
                 depth, canonical, schema, photo_abs(fid, 1200), alt)
     html += header(depth, "services")
     html += page_hero(svc["cat"], esc(name), esc(svc["summary"]),
@@ -1028,7 +1044,8 @@ def build_services_index():
               itemlist_schema("시공 항목", [(sv["name"], service_href(sv["name"])) for sv in SERVICES]),
               breadcrumb_schema([("홈", "/"), ("서비스", "/services/")])]
     html = head("전체 서비스 %d가지 | %s" % (len(SERVICES), BRAND),
-                "누수탐지·누수공사부터 하수구막힘, 변기막힘, 수전교체, 배관설비까지 %s의 전체 시공 항목과 평균 비용을 한눈에 확인하세요." % BRAND,
+                "누수탐지·하수구막힘·변기막힘·수전교체 등 배관 시공 %d가지 평균 비용과 소요 시간. %s"
+                % (len(SERVICES), TEL),
                 depth, "/services/", schema, photo_abs(fid, 1200))
     html += header(depth, "services")
     html += page_hero("ALL SERVICES", "배관에서 생기는 거의 모든 문제",
@@ -1122,8 +1139,8 @@ def build_region(region):
     ]
 
     html = head("%s 배관공사·하수구막힘 24시간 출동 | %s" % (short, BRAND),
-                "%s %s 전역 %d개 시·군·구, %d개 읍·면·동 출동. 하수구막힘·누수탐지·변기막힘·수전교체 24시간 접수. 방문 견적 무료, 상담 %s"
-                % (BRAND, short, n_sgg, n_dong, TEL),
+                "%s %d개 시·군·구 %d개 읍·면·동 배관 출동. 하수구막힘·누수탐지 24시간, 견적 무료. %s"
+                % (short, n_sgg, n_dong, TEL),
                 depth, canonical, schema, photo_abs(fid, 1200), alt)
     html += header(depth, "regions")
     html += page_hero("%s · 지역별 출동" % region["area"],
@@ -1294,8 +1311,8 @@ def build_area(region, c, g=None):
     crumb_trail.append((label, ""))
 
     html = head("%s 배관공사·하수구막힘 출동 | %s" % (qual, BRAND),
-                "%s %s 배관공사, 하수구막힘, 누수탐지, 변기막힘, 수전교체 24시간 출동. %d개 지역 전역 방문, 견적 무료. 상담 %s"
-                % (BRAND, full, n_child, TEL),
+                "%s 배관공사·하수구막힘·누수탐지 24시간 출동. %d개 지역 전역, 견적 무료. %s"
+                % (qual, n_child, TEL),
                 depth, canonical, schema, photo_abs(fid, 1200), alt)
     html += header(depth, "regions")
     html += page_hero("%s · 지역 출동" % esc(region["area"] if g is None else parent_label),
@@ -1435,8 +1452,8 @@ def build_dong(region, c, g, dong, siblings):
     crumb_trail.append((dong, ""))
 
     html = head("%s 배관공사·하수구막힘 출동 | %s" % (qual, BRAND),
-                "%s %s 배관공사, 하수구막힘, 누수탐지, 변기막힘, 수전교체 24시간 출동. 방문 견적 무료, 확정 금액 승인 후 시공. 상담 %s"
-                % (BRAND, full, TEL),
+                "%s 배관공사·하수구막힘·누수탐지·변기막힘 24시간 출동. 견적 무료. %s"
+                % (qual, TEL),
                 depth, canonical, schema, photo_abs(fid, 1200), alt)
     html += header(depth, "regions")
     html += page_hero("%s · %s" % (esc(region["short"]), esc(parent)),
@@ -1540,8 +1557,8 @@ def build_regions_index():
               itemlist_schema("출동 시·도", [(r["short"], region_href(r)) for r in REGIONS]),
               breadcrumb_schema([("홈", "/"), ("지역별 출동", "/regions/")])]
     html = head("전국 지역별 배관 출동 안내 | %s" % BRAND,
-                "전국 16개 시·도, %d개 시·군·구, %s개 읍·면·동. 시·도 → 시·군·구 → 행정동 순서로 눌러 내 동네 전용 안내 페이지를 확인하세요."
-                % (TOTAL_SGG, DONG_FMT),
+                "전국 16개 시·도 %d개 시·군·구 %s개 읍·면·동 배관 출동. 내 동네 바로 확인. %s"
+                % (TOTAL_SGG, DONG_FMT, TEL),
                 depth, "/regions/", schema, photo_abs(fid, 1200))
     html += header(depth, "regions")
     html += page_hero("NATIONWIDE", "내 동네가 출동 지역인지<br>3초 만에 확인하세요",
@@ -1658,7 +1675,7 @@ def build_pricing():
         pin=ICONS["pin"], won=ICONS["won"], clock=ICONS["clock"],
         faq=faq_html([FAQ_MAIN[0], FAQ_MAIN[1], FAQ_MAIN[3], FAQ_MAIN[6], FAQ_MAIN[4]]))
     simple_page("/pricing/", "배관공사·하수구막힘 비용 안내 | %s" % BRAND,
-                "하수구막힘 3만원대부터 누수탐지, 변기교체, 배관설비까지 %s의 시공 항목별 평균 비용과 소요 시간을 공개합니다." % BRAND,
+                "하수구막힘 3만원대부터 누수탐지·변기교체까지 시공 %d가지 평균 비용과 소요 시간 공개. %s" % (len(SERVICES), TEL),
                 "PRICING", "부르는 게 값이 되지 않도록",
                 "%d개 시공 항목의 평균 비용을 먼저 공개합니다. 현장에서 금액이 달라질 수 있는 조건까지 함께 적어 두었습니다." % len(SERVICES),
                 body, "pricing", "0.9", schema=[faq_schema([FAQ_MAIN[0], FAQ_MAIN[1], FAQ_MAIN[3]])],
@@ -1680,7 +1697,7 @@ def build_gallery():
 </section>
 """ % dict(n=len(PHOTOS), gal=gallery_html(0))
     simple_page("/gallery/", "시공사례 · 현장 사진 | %s" % BRAND,
-                "%s가 직접 시공한 배관공사·하수구막힘·누수공사 현장 사진 %d장. 실제 작업 과정을 확인해 보세요." % (BRAND, len(PHOTOS)),
+                "%s가 직접 시공한 배관·누수·막힘 현장 사진 %d장. 실제 작업 과정 확인. %s" % (BRAND, len(PHOTOS), TEL),
                 "GALLERY", "말보다 현장 사진",
                 "누수공사, 막힘 제거, 설비 교체까지 실제 작업 현장에서 남긴 기록입니다.",
                 body, "gallery", "0.7", photo_i=5, chips=("현장 사진 %d장" % len(PHOTOS), "시공 후 사진 제공"), crumb="시공사례")
@@ -1705,7 +1722,7 @@ def build_reviews():
 </section>
 """ % dict(revs=reviews_html(), badge=rating_badge())
     simple_page("/reviews/", "고객 시공 후기 | %s" % BRAND,
-                "%s에서 실제 시공을 받으신 고객들의 후기 모음. 하수구막힘, 누수공사, 변기·수전 교체 후기." % BRAND,
+                "%s 시공 고객 후기 %d건. 하수구막힘·누수공사·변기교체 실제 후기. %s" % (BRAND, RATING_COUNT, TEL),
                 "REVIEWS", "고객이 직접 남긴 이야기",
                 "과장 없이, 시공을 받으신 분들이 남겨주신 그대로 싣습니다.",
                 body, "reviews", "0.7", photo_i=8,
@@ -1790,7 +1807,7 @@ def build_about():
            auth="".join('<a class="chip" href="%s" target="_blank" rel="noopener nofollow">%s</a>' % (u, esc(n))
                         for n, u in AUTHORITY))
     simple_page("/about/", "회사소개 · 시공 기준 | %s" % BRAND,
-                "%s는 원인을 먼저 특정하고 확정 금액을 승인받은 뒤에 시공합니다. 대표 이력과 시공 원칙, 보증 기준을 공개합니다." % BRAND,
+                "원인을 먼저 특정하고 확정 금액 승인 후 시공. 대표 이력과 보증 기준 공개. %s" % TEL,
                 "ABOUT", "믿고 부를 수 있는 배관",
                 "22년 현장 경력의 대표가 직접 검수하는 시공과 정보. 저희가 일하는 방식을 그대로 공개합니다.",
                 body, "about", "0.7", photo_i=11, chips=("현장 경력 22년", "하자보증 운영", "배상책임보험 가입"), crumb="회사소개")
@@ -1815,7 +1832,7 @@ def build_faq():
            chips="".join('<a class="chip" href="%s">%s</a>' % (service_href(s["name"], 0), esc(s["name"]))
                          for s in SERVICES))
     simple_page("/faq/", "자주 묻는 질문 | %s" % BRAND,
-                "출장비, 견적 취소, 야간 출동, 보증 기간, 결제 방법까지. %s에 가장 많이 물어보시는 질문과 답변." % BRAND,
+                "출장비·견적 취소·야간 출동·보증 기간·결제 방법까지 자주 묻는 질문 모음. %s" % TEL,
                 "FAQ", "궁금한 것부터 풀고 시작합니다",
                 "비용, 출동, 보증에 대해 가장 많이 받는 질문을 모았습니다.",
                 body, "", "0.7", schema=[faq_schema(FAQ_MAIN)], photo_i=14,
@@ -2020,6 +2037,12 @@ def main():
         if cnt.get(k):
             print("  %-9s %d" % (k, cnt[k]))
     print("sitemap %d개 + 색인 · rss %d건 · robots · IndexNow 키" % (len(sm), n_rss))
+    if LONG_DESCS:
+        worst = max(LONG_DESCS)
+        print("⚠ 설명문 80자 초과 %d건 (최대 %d자) — 잘라서 출력함\n   %s"
+              % (len(LONG_DESCS), worst[0], worst[1][:90]))
+    else:
+        print("설명문 전 페이지 80자 이내")
 
 
 if __name__ == "__main__":
