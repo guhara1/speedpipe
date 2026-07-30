@@ -1,5 +1,6 @@
 # -*- coding: utf-8 -*-
 """스피드배관 사이트 콘텐츠 데이터."""
+import os
 
 BRAND = "스피드배관"
 TAGLINE = "전국 24시간 배관 출동"
@@ -38,8 +39,37 @@ PHOTOS = [
 ]
 
 
-def photo_src(fid, size=1200):
+# 로컬 WebP(assets/img/works/)가 있으면 그것을 쓰고, 없으면 드라이브 공개 URL로 대체한다.
+# tools/optimize_photos.py 를 돌리면 WebP가 생기고 빌드가 자동으로 로컬 경로로 바뀐다.
+_IMG_DIR = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))),
+                        "assets", "img", "works")
+
+
+def _local_name(fid, size):
+    return "%s%s.webp" % (fid, "" if size >= 900 else "-sm")
+
+
+def has_local(fid, size=1200):
+    return os.path.isfile(os.path.join(_IMG_DIR, _local_name(fid, size)))
+
+
+def photo_src(fid, size=1200, depth=0):
+    """페이지에 넣을 이미지 경로. depth 는 루트로부터의 디렉터리 깊이."""
+    if has_local(fid, size):
+        return "%sassets/img/works/%s" % ("../" * depth, _local_name(fid, size))
     return "https://drive.google.com/thumbnail?id=%s&sz=w%d" % (fid, size)
+
+
+def photo_abs(fid, size=1200):
+    """og:image · 구조화 데이터용 절대 URL."""
+    if has_local(fid, size):
+        return "%s/assets/img/works/%s" % (SITE, _local_name(fid, size))
+    return "https://drive.google.com/thumbnail?id=%s&sz=w%d" % (fid, size)
+
+
+def photo_for(seed, offset=0):
+    """페이지마다 다른 사진이 걸리도록 순번으로 고른다."""
+    return PHOTOS[(seed + offset) % len(PHOTOS)]
 
 
 # ---------------------------------------------------------------- 서비스

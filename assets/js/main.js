@@ -16,6 +16,18 @@
     var panel = document.querySelector('.mobilenav');
     if (!burger || !panel) return;
 
+    // 모바일 메뉴 목록은 헤더 메가메뉴에서 그대로 복제한다(마크업 중복 제거).
+    Array.prototype.forEach.call(panel.querySelectorAll('details[data-clone]'), function (d) {
+      var src = document.querySelector(d.getAttribute('data-clone'));
+      var box = d.querySelector('.mob-links');
+      if (!src || !box) return;
+      Array.prototype.forEach.call(src.querySelectorAll('a'), function (a) {
+        if (a.closest('.menu__foot')) return;
+        var c = a.cloneNode(true);
+        box.insertBefore(c, box.firstChild);
+      });
+    });
+
     burger.addEventListener('click', function () {
       var open = panel.classList.toggle('is-open');
       burger.setAttribute('aria-expanded', open ? 'true' : 'false');
@@ -68,6 +80,8 @@
     this.pickedTxt = root.querySelector('.region-picked__name');
     this.pickedSub = root.querySelector('.region-picked__sub');
     this.pickedTel = root.querySelector('.region-picked__tel');
+    this.pickedPage = root.querySelector('.region-picked__page');
+    this.root_ = root.getAttribute('data-root') || '';
     this.searchEl = root.querySelector('.region-search input');
     this.resultsEl = root.querySelector('.region-results');
 
@@ -287,6 +301,29 @@
       this.pickedTel.setAttribute('aria-label', full + ' 출동 요청 — 전화 ' + TEL);
       this.pickedTel.innerHTML = '<span aria-hidden="true">📞</span> 지금 전화하기 · ' + TEL;
     }
+    if (this.pickedPage) {
+      var url = this.pageUrl();
+      if (url) {
+        this.pickedPage.setAttribute('href', url);
+        this.pickedPage.textContent = names[names.length - 1] + ' 페이지 보기';
+        this.pickedPage.hidden = false;
+      } else {
+        this.pickedPage.hidden = true;
+      }
+    }
+  };
+
+  // 선택한 지역의 개별 안내 페이지 주소.
+  // regions/<시도>/<시군구>/[<행정구>/]<동>.html
+  RegionPicker.prototype.pageUrl = function () {
+    var i = 0;
+    while (i < this.path.length && !this.path[i].slug) i++;
+    if (i >= this.path.length) return '';
+    var sido = this.path[i].short.replace(/·/g, '');
+    var rest = this.path.slice(i + 1).map(function (n) { return n.name; });
+    if (!rest.length) return this.root_ + 'regions/' + encodeURIComponent(sido) + '.html';
+    var segs = [sido].concat(rest).map(encodeURIComponent);
+    return this.root_ + 'regions/' + segs.join('/') + '.html';
   };
 
   /* -------------------------------------------------------------- 갤러리 */
