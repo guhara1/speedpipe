@@ -1,4 +1,25 @@
+# 스피드배관 — 전 페이지 수집 허용
 User-agent: *
 Allow: /
 
-Sitemap: https://speedpipe.co.kr/sitemap.xml
+# 네이버
+User-agent: Yeti
+Allow: /
+
+# 구글
+User-agent: Googlebot
+Allow: /
+
+User-agent: Googlebot-Image
+Allow: /
+
+# 빙 (IndexNow 경유 색인)
+User-agent: bingbot
+Allow: /
+
+# 다음
+User-agent: Daumoa
+Allow: /
+
+Sitemap: https://speedpipe.netlify.app/sitemap.xml
+Sitemap: https://speedpipe.netlify.app/rss.xml

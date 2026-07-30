@@ -1,8 +1,8 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <sitemapindex xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
-  <sitemap><loc>https://speedpipe.co.kr/sitemap-dong.xml</loc></sitemap>
-  <sitemap><loc>https://speedpipe.co.kr/sitemap-main.xml</loc></sitemap>
-  <sitemap><loc>https://speedpipe.co.kr/sitemap-services.xml</loc></sitemap>
-  <sitemap><loc>https://speedpipe.co.kr/sitemap-sgg.xml</loc></sitemap>
-  <sitemap><loc>https://speedpipe.co.kr/sitemap-sido.xml</loc></sitemap>
+  <sitemap><loc>https://speedpipe.netlify.app/sitemap-dong.xml</loc><lastmod>2026-07-30</lastmod></sitemap>
+  <sitemap><loc>https://speedpipe.netlify.app/sitemap-main.xml</loc><lastmod>2026-07-30</lastmod></sitemap>
+  <sitemap><loc>https://speedpipe.netlify.app/sitemap-services.xml</loc><lastmod>2026-07-30</lastmod></sitemap>
+  <sitemap><loc>https://speedpipe.netlify.app/sitemap-sgg.xml</loc><lastmod>2026-07-30</lastmod></sitemap>
+  <sitemap><loc>https://speedpipe.netlify.app/sitemap-sido.xml</loc><lastmod>2026-07-30</lastmod></sitemap>
 </sitemapindex>

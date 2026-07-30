@@ -28,7 +28,7 @@ from site_data import (  # noqa: E402
     BRAND, TEL, TEL_HREF, TEL_INTL, SITE, OWNER, YEAR,
     PHOTOS, photo_src, photo_abs,
     CATEGORIES, SERVICES, PRICE_ROWS, REVIEWS, FAQ_MAIN,
-    STEPS, AUTHORITY, rating_summary,
+    STEPS, AUTHORITY, rating_summary, BUILD_DATE, INDEXNOW_KEY, VERIFY,
 )
 
 RATING, RATING_COUNT = rating_summary()
@@ -181,6 +181,13 @@ def head(title, desc, depth, canonical, schema=None, og_image=None, og_alt=""):
              '<meta name="twitter:card" content="summary_large_image">',
              '<meta name="twitter:image" content="%s">' % esc(img),
              '<meta name="format-detection" content="telephone=yes">',
+             '<meta name="robots" content="index, follow, max-image-preview:large, max-snippet:-1, max-video-preview:-1">',
+             '<link rel="alternate" type="application/rss+xml" title="%s 새 소식" href="%s/rss.xml">' % (BRAND, SITE),
+             '<link rel="sitemap" type="application/xml" href="%s/sitemap.xml">' % SITE,]
+    for meta_name, value in VERIFY.items():
+        if value:
+            parts.append('<meta name="%s" content="%s">' % (meta_name, esc(value)))
+    parts += [
              '<link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>',
              '<link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/pretendardvariable-dynamic-subset.min.css">',
              '<link rel="stylesheet" href="/assets/css/main.css">',
@@ -1816,10 +1823,18 @@ def build_faq():
 
 
 # ------------------------------------------------------------------ sitemap
+def xesc(s):
+    return esc(s).replace("'", "&apos;")
+
+
 def build_sitemap():
     chunks = {}
     for path, pri, freq, group in PAGES:
         chunks.setdefault(group, []).append((path, pri, freq))
+
+    # 로컬 WebP 가 있을 때만 이미지 사이트맵을 붙인다(외부 호스팅 이미지는 색인되지 않음).
+    from site_data import has_local
+    local_img = has_local(PHOTOS[0][0], 1200)
 
     files = []
     for group in sorted(chunks):
@@ -1827,18 +1842,111 @@ def build_sitemap():
         for i in range(0, len(items), 5000):
             part = items[i:i + 5000]
             name = "sitemap-%s%s.xml" % (group, "-%d" % (i // 5000 + 1) if len(items) > 5000 else "")
-            urls = "\n".join(
-                "  <url><loc>%s%s</loc><changefreq>%s</changefreq><priority>%s</priority></url>"
-                % (SITE, p, f, pr) for p, pr, f in part)
-            write(name, '<?xml version="1.0" encoding="UTF-8"?>\n'
-                        '<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n%s\n</urlset>\n' % urls)
+            rows = []
+            for j, (p, pr, f) in enumerate(part):
+                img = ""
+                if local_img:
+                    fid, cap = PHOTOS[stable(p) % len(PHOTOS)]
+                    img = ("<image:image><image:loc>%s</image:loc>"
+                           "<image:title>%s</image:title></image:image>"
+                           % (photo_abs(fid, 1200), xesc("%s — %s" % (BRAND, cap))))
+                rows.append("  <url><loc>%s%s</loc><lastmod>%s</lastmod>"
+                            "<changefreq>%s</changefreq><priority>%s</priority>%s</url>"
+                            % (SITE, p, BUILD_DATE, f, pr, img))
+            write(name,
+                  '<?xml version="1.0" encoding="UTF-8"?>\n'
+                  '<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9"\n'
+                  '        xmlns:image="http://www.google.com/schemas/sitemap-image/1.1">\n'
+                  '%s\n</urlset>\n' % "\n".join(rows))
             files.append(name)
 
-    idx = "\n".join("  <sitemap><loc>%s/%s</loc></sitemap>" % (SITE, f) for f in files)
+    idx = "\n".join("  <sitemap><loc>%s/%s</loc><lastmod>%s</lastmod></sitemap>"
+                    % (SITE, f, BUILD_DATE) for f in files)
     write("sitemap.xml", '<?xml version="1.0" encoding="UTF-8"?>\n'
                          '<sitemapindex xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n%s\n</sitemapindex>\n' % idx)
-    write("robots.txt", "User-agent: *\nAllow: /\n\nSitemap: %s/sitemap.xml\n" % SITE)
     return files
+
+
+def build_rss():
+    """네이버 서치어드바이저 RSS 제출용. 핵심 페이지만 담는다(RSS 는 '새 글' 알림 용도)."""
+    import datetime
+    base = datetime.datetime.strptime(BUILD_DATE, "%Y-%m-%d")
+    items = [("/", "%s | 전국 배관공사·하수구막힘 24시간 출동" % BRAND,
+              "전국 16개 시·도 %s개 읍·면·동 24시간 출동. 방문 견적 무료, 확정 금액 승인 후 시공." % DONG_FMT),
+             ("/services/", "전체 서비스 %d가지" % len(SERVICES), "누수·막힘·교체 전 항목과 평균 비용"),
+             ("/pricing/", "배관공사·하수구막힘 비용 안내", "시공 항목별 평균 비용과 소요 시간 공개"),
+             ("/reviews/", "고객 시공 후기", "실제 시공을 받으신 고객 후기 %d건" % RATING_COUNT),
+             ("/gallery/", "시공사례 · 현장 사진", "실제 시공 현장 사진 %d장" % len(PHOTOS)),
+             ("/regions/", "전국 지역별 배관 출동 안내", "시·도 → 시·군·구 → 읍·면·동 순서로 내 동네 확인")]
+    items += [(service_href(sv["name"]), "%s 비용·출동 안내" % sv["name"], sv["summary"])
+              for sv in SERVICES]
+    items += [(region_href(r), "%s 배관공사·하수구막힘 24시간 출동" % r["short"],
+               "%s 전역 %d개 시·군·구, %d개 읍·면·동 출동"
+               % (r["name"], len(r["children"]), count_dongs(r))) for r in REGIONS]
+
+    rows = []
+    for i, (url, title, desc) in enumerate(items):
+        pub = (base - datetime.timedelta(hours=i)).strftime("%a, %d %b %Y %H:%M:%S +0900")
+        rows.append(
+            "    <item>\n"
+            "      <title>%s</title>\n"
+            "      <link>%s%s</link>\n"
+            "      <guid isPermaLink=\"true\">%s%s</guid>\n"
+            "      <description>%s</description>\n"
+            "      <pubDate>%s</pubDate>\n"
+            "    </item>" % (xesc(title), SITE, url, SITE, url, xesc(desc), pub))
+
+    write("rss.xml",
+          '<?xml version="1.0" encoding="UTF-8"?>\n'
+          '<rss version="2.0" xmlns:atom="http://www.w3.org/2005/Atom">\n'
+          '  <channel>\n'
+          '    <title>%s — 전국 배관공사·하수구막힘 24시간 출동</title>\n'
+          '    <link>%s/</link>\n'
+          '    <description>누수탐지, 하수구막힘, 배관막힘, 변기막힘, 수전교체까지 '
+          '전국 16개 시·도 %s개 읍·면·동 출동. 상담 %s</description>\n'
+          '    <language>ko</language>\n'
+          '    <lastBuildDate>%s</lastBuildDate>\n'
+          '    <atom:link href="%s/rss.xml" rel="self" type="application/rss+xml"/>\n'
+          '%s\n'
+          '  </channel>\n'
+          '</rss>\n'
+          % (BRAND, SITE, DONG_FMT, TEL,
+             base.strftime("%a, %d %b %Y %H:%M:%S +0900"), SITE, "\n".join(rows)))
+    return len(items)
+
+
+def build_robots():
+    write("robots.txt", """# %(brand)s — 전 페이지 수집 허용
+User-agent: *
+Allow: /
+
+# 네이버
+User-agent: Yeti
+Allow: /
+
+# 구글
+User-agent: Googlebot
+Allow: /
+
+User-agent: Googlebot-Image
+Allow: /
+
+# 빙 (IndexNow 경유 색인)
+User-agent: bingbot
+Allow: /
+
+# 다음
+User-agent: Daumoa
+Allow: /
+
+Sitemap: %(site)s/sitemap.xml
+Sitemap: %(site)s/rss.xml
+""" % dict(brand=BRAND, site=SITE))
+
+
+def build_indexnow_key():
+    """IndexNow 는 https://<도메인>/<키>.txt 로 키 소유를 확인한다."""
+    write("%s.txt" % INDEXNOW_KEY, INDEXNOW_KEY + "\n")
 
 
 # ------------------------------------------------------------------ main
@@ -1900,6 +2008,9 @@ def main():
     build_about()
     build_faq()
     sm = build_sitemap()
+    n_rss = build_rss()
+    build_robots()
+    build_indexnow_key()
     build_redirects()
 
     from collections import Counter
@@ -1908,7 +2019,7 @@ def main():
     for k in ("main", "services", "sido", "sgg", "dong"):
         if cnt.get(k):
             print("  %-9s %d" % (k, cnt[k]))
-    print("sitemap %d개 + 색인" % len(sm))
+    print("sitemap %d개 + 색인 · rss %d건 · robots · IndexNow 키" % (len(sm), n_rss))
 
 
 if __name__ == "__main__":

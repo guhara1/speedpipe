@@ -7,9 +7,26 @@ TAGLINE = "전국 24시간 배관 출동"
 TEL = "010-5183-4300"
 TEL_HREF = "tel:01051834300"
 TEL_INTL = "+82-10-5183-4300"
-SITE = "https://speedpipe.co.kr"
+SITE = "https://speedpipe.netlify.app"
 OWNER = "김성훈"
 YEAR = 2026
+
+# 사이트맵 lastmod · RSS pubDate 기준일. 내용을 크게 고쳤을 때 갱신하면 재크롤이 빨라진다.
+BUILD_DATE = "2026-07-30"
+
+# IndexNow 키. https://<도메인>/<키>.txt 파일이 같은 값을 담고 있어야 한다.
+# 빌드가 자동으로 그 파일을 만든다. 한 번 정하면 바꾸지 말 것.
+INDEXNOW_KEY = "a7f3c1d94b2e48a6b05c7e19d38f6042"
+
+# 검색엔진 소유확인 메타태그. 각 도구에서 발급받은 값만 채우면 전 페이지에 자동으로 들어간다.
+#   네이버  : 서치어드바이저 → 사이트 등록 → HTML 태그 → content 값
+#   구글    : Search Console → 소유권 확인 → HTML 태그 → content 값
+#   빙      : Bing Webmaster Tools → HTML Meta Tag → content 값
+VERIFY = {
+    "naver-site-verification": "d6df0e0f15e459a639d13edfbf8bab40816ab11d",
+    "google-site-verification": "",
+    "msvalidate.01": "",
+}
 
 # 구글 드라이브 공개 폴더의 실제 시공 사진.
 # tools/fetch_photos.sh 로 assets/img/works/ 에 내려받아 로컬 호스팅으로 바꿀 수 있다.

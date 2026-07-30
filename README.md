@@ -44,6 +44,7 @@ _redirects                  옛 .html 주소 → 새 주소 301 (Netlify)
 `_redirects` 는 예전 `.html` 주소를 새 주소로 301 보냅니다. Netlify 의 규칙 수 권장치(1,000개)를
 넘지 않도록 상위 314개 페이지만 넣었고, 읍·면·동 2,861개는 sitemap 재크롤에 맡깁니다.
 
+```
 assets/css/main.css         디자인 시스템 전체
 assets/js/regions-data.js   전국 행정구역 데이터 (자동 생성)
 assets/js/main.js           내비 · 지역 선택기 · 갤러리 라이트박스
@@ -53,6 +54,7 @@ tools/build_site.py         페이지 생성기 (3,175개, 약 3초)
 tools/site_data.py          문구 · 가격 · 사진 등 콘텐츠 데이터
 tools/optimize_photos.py    드라이브 사진 → WebP 최적화
 tools/fetch_photos.sh       드라이브 사진 원본 내려받기
+tools/indexnow.py           네이버·빙·Yandex 색인 즉시 요청
 ```
 
 ## 지역 페이지
@@ -149,7 +151,10 @@ python3 tools/build_site.py
 | 이름 | 내용 |
 | --- | --- |
 | `TEL`, `TEL_HREF` | 상담 전화번호 |
-| `SITE` | 실제 도메인 (canonical · sitemap 에 사용) |
+| `SITE` | 실제 도메인 (canonical · sitemap · RSS · IndexNow 에 사용) |
+| `BUILD_DATE` | sitemap `lastmod` · RSS `pubDate` 기준일 |
+| `VERIFY` | 네이버·구글·빙 소유확인 메타태그 값 |
+| `INDEXNOW_KEY` | IndexNow 키 (한 번 정하면 바꾸지 말 것) |
 | `SERVICES` | 서비스 21개의 설명 · 증상 · 비용 · FAQ |
 | `PRICE_ROWS` | 홈/서비스 페이지 비용표 |
 | `REVIEWS` | 고객 후기 (본문·작성자·항목·지역·작성일·별점) — 평점 구조화 데이터의 원본 |
@@ -163,7 +168,9 @@ python3 tools/build_site.py
 - [ ] **후기를 실제 후기로 교체** (`REVIEWS` — 평점·후기 구조화 데이터가 여기서 생성됨)
 - [ ] 시공 사진 설명을 실제 작업 내용으로 교체
 - [ ] `python3 tools/optimize_photos.py` 실행해 사진을 로컬 WebP로 전환
-- [ ] Search Console 에 sitemap.xml 제출
+- [ ] 배포 후 `python3 tools/indexnow.py` 실행 (네이버·빙 즉시 알림)
+- [ ] 네이버 서치어드바이저 · 구글 Search Console 소유확인 값을 `VERIFY` 에 입력 후 재빌드
+- [ ] Search Console 에 sitemap.xml, 서치어드바이저에 sitemap.xml + rss.xml 제출
 
 ## SEO 정리
 
@@ -207,8 +214,87 @@ python3 tools/build_site.py
 > `LocalBusiness` 리치 결과로 표시하지 않습니다. 네이버 등 다른 엔진과 정보 정확성을 위해
 > 마크업은 유지하되, 별점 리치 스니펫은 기대하지 않는 편이 좋습니다.
 
-배포 후 [Google Search Console](https://search.google.com/search-console)에 `sitemap.xml` 을 제출하세요.
-3,000개가 넘는 페이지라 전부 색인되기까지 몇 주가 걸립니다.
+## 색인 — 가장 빠르게 넣는 순서
+
+도메인은 `https://speedpipe.netlify.app` 로 설정되어 있습니다
+(`tools/site_data.py` 의 `SITE`). 자체 도메인을 붙이면 이 값을 바꾸고 다시 빌드하세요.
+
+빌드가 만들어 주는 파일:
+
+| 파일 | 용도 |
+| --- | --- |
+| `sitemap.xml` | 색인 파일. 아래 5개를 가리킴 |
+| `sitemap-{main,services,sido,sgg,dong}.xml` | 3,175 URL · `lastmod` 포함 |
+| `rss.xml` | 네이버 서치어드바이저 RSS 제출용 (핵심 43건) |
+| `robots.txt` | Yeti(네이버)·Googlebot·bingbot·Daumoa 허용 + 사이트맵·RSS 위치 |
+| `<INDEXNOW_KEY>.txt` | IndexNow 키 확인 파일 |
+
+### 1단계 — 배포 (먼저 해야 함)
+
+키 파일과 사이트맵이 실제 주소에서 열려야 다음 단계가 동작합니다.
+
+```
+https://speedpipe.netlify.app/robots.txt
+https://speedpipe.netlify.app/sitemap.xml
+https://speedpipe.netlify.app/rss.xml
+https://speedpipe.netlify.app/a7f3c1d94b2e48a6b05c7e19d38f6042.txt
+```
+
+### 2단계 — IndexNow 로 즉시 알림 (네이버 · 빙 · Yandex)
+
+네이버 서치어드바이저는 2023년 7월부터 IndexNow 를 지원합니다.
+크롤러가 올 때까지 기다리지 않고 **바로 알릴 수 있는 가장 빠른 경로**입니다.
+
+```bash
+python3 tools/indexnow.py                # 3,175개 전부
+python3 tools/indexnow.py --only sido    # 시·도 17개만 먼저
+python3 tools/indexnow.py --dry-run      # 보내지 않고 확인만
+```
+
+응답 `200`/`202` 면 접수된 것입니다. `403` 이 나오면 키 파일이 아직 배포되지 않은 상태입니다.
+내용을 고칠 때마다 다시 실행하면 변경분이 곧바로 전달됩니다.
+
+> 구글은 IndexNow 를 지원하지 않습니다. 구글용 Indexing API 는 채용공고·라이브영상 전용이라
+> 이 사이트에는 쓸 수 없습니다. 구글은 3단계를 따르세요.
+
+### 3단계 — 네이버 서치어드바이저
+
+1. [서치어드바이저](https://searchadvisor.naver.com) → 사이트 등록 → `https://speedpipe.netlify.app`
+2. 소유 확인 → **HTML 태그** 방식 선택 → `content` 값 복사
+3. `tools/site_data.py` 의 `VERIFY["naver-site-verification"]` 에 붙여넣고 `python3 tools/build_site.py` → 재배포
+4. 요청 → **사이트맵 제출** 에 `sitemap.xml`
+5. 요청 → **RSS 제출** 에 `rss.xml`
+6. 요청 → **웹페이지 수집** 에 홈·주요 페이지를 하나씩 (하루 할당량 소진까지)
+
+### 4단계 — 구글 Search Console
+
+1. [Search Console](https://search.google.com/search-console) → 속성 추가 → **URL 접두어** → `https://speedpipe.netlify.app/`
+2. 소유 확인 → HTML 태그 → `VERIFY["google-site-verification"]` 에 넣고 재빌드·재배포
+3. Sitemaps → `sitemap.xml` 제출
+4. URL 검사 → 홈·주요 시·도·시공 페이지에 **색인 생성 요청** (하루 10여 건 제한)
+
+3,000개가 넘는 페이지라 구글이 전부 도는 데는 보통 몇 주가 걸립니다.
+색인 속도는 사이트맵보다 **내부 링크와 콘텐츠 고유성**에 더 크게 좌우되므로,
+지역별 실제 시공 사례를 채워 넣는 것이 결국 가장 빠른 길입니다.
+
+### 5단계 — 빙 웹마스터 도구 (선택)
+
+`VERIFY["msvalidate.01"]` 에 값을 넣으면 됩니다. IndexNow 로 이미 전달되지만,
+도구에 등록해 두면 색인 상태를 확인할 수 있습니다.
+
+### 소유확인 태그 한 곳에서 관리
+
+```python
+# tools/site_data.py
+VERIFY = {
+    "naver-site-verification": "여기에_네이버_값",
+    "google-site-verification": "여기에_구글_값",
+    "msvalidate.01": "여기에_빙_값",
+}
+```
+
+값을 채우고 다시 빌드하면 3,175개 페이지 `<head>` 에 자동으로 들어갑니다.
+빈 값은 태그를 만들지 않습니다.
 
 ## 접근성 · 성능 메모
 
