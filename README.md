@@ -18,22 +18,31 @@ python3 -m http.server 8000
 
 ## 구조
 
-```
-index.html                                     홈
-services/index.html                            전체 서비스 목록
-services/<항목>.html                            서비스 상세 21개
-pricing.html / gallery.html / reviews.html     비용 · 시공사례 · 후기
-about.html / faq.html                          회사소개 · 자주 묻는 질문
+URL 은 **확장자 없이 끝에 슬래시**를 붙인 형태입니다. 파일은 `<경로>/index.html` 로 저장되어
+Netlify · GitHub Pages · Cloudflare Pages · nginx 어디서든 별도 설정 없이 그대로 동작합니다.
 
-regions/index.html                             전국 지역 찾기
-regions/<시도>.html                             시·도 16개          예) regions/서울.html
-regions/<시도>/<시군구>.html                     시·군·구 230개       예) regions/서울/강남구.html
-regions/<시도>/<시군구>/<행정구>.html             행정구 39개          예) regions/경기/수원시/장안구.html
-regions/<시도>/<시군구>/[<행정구>/]<동>.html       행정동 2,861개       예) regions/서울/강남구/역삼동.html
+```
+URL                                     파일
+/                                       index.html
+/services/                              services/index.html
+/services/하수구막힘/                     services/하수구막힘/index.html          21개
+/pricing/ /gallery/ /reviews/           pricing/index.html …
+/about/ /faq/
+
+/regions/                               regions/index.html
+/regions/서울/                           regions/서울/index.html                 시·도 16개
+/regions/서울/강남구/                     regions/서울/강남구/index.html           시·군·구 230개
+/regions/경기/수원시/장안구/               …/장안구/index.html                     행정구 39개
+/regions/서울/강남구/역삼동/               …/역삼동/index.html                     행정동 2,861개
 
 sitemap.xml                 sitemap 색인
 sitemap-{main,services,sido,sgg,dong}.xml
 robots.txt
+_redirects                  옛 .html 주소 → 새 주소 301 (Netlify)
+```
+
+`_redirects` 는 예전 `.html` 주소를 새 주소로 301 보냅니다. Netlify 의 규칙 수 권장치(1,000개)를
+넘지 않도록 상위 314개 페이지만 넣었고, 읍·면·동 2,861개는 sitemap 재크롤에 맡깁니다.
 
 assets/css/main.css         디자인 시스템 전체
 assets/js/regions-data.js   전국 행정구역 데이터 (자동 생성)
@@ -143,7 +152,7 @@ python3 tools/build_site.py
 | `SITE` | 실제 도메인 (canonical · sitemap 에 사용) |
 | `SERVICES` | 서비스 21개의 설명 · 증상 · 비용 · FAQ |
 | `PRICE_ROWS` | 홈/서비스 페이지 비용표 |
-| `REVIEWS` | 고객 후기 |
+| `REVIEWS` | 고객 후기 (본문·작성자·항목·지역·작성일·별점) — 평점 구조화 데이터의 원본 |
 | `FAQ_MAIN` | 공통 FAQ |
 | `PHOTOS` | 시공 사진 목록과 설명 |
 
@@ -151,7 +160,7 @@ python3 tools/build_site.py
 
 - [ ] `tools/site_data.py` 의 `SITE` 를 실제 도메인으로 변경 후 재빌드
 - [ ] `about.html` 사업자등록번호 등 등록 정보 기입 (`site_data.py` 아님 — `build_site.py` 의 `build_about()`)
-- [ ] 후기 내용이 실제 시공 후기와 일치하는지 확인
+- [ ] **후기를 실제 후기로 교체** (`REVIEWS` — 평점·후기 구조화 데이터가 여기서 생성됨)
 - [ ] 시공 사진 설명을 실제 작업 내용으로 교체
 - [ ] `python3 tools/optimize_photos.py` 실행해 사진을 로컬 WebP로 전환
 - [ ] Search Console 에 sitemap.xml 제출
@@ -160,14 +169,43 @@ python3 tools/build_site.py
 
 | 항목 | 적용 |
 | --- | --- |
-| 페이지별 title · meta description | 지역명·서비스명이 들어간 고유 문구 |
+| URL | 확장자 없음 (`/regions/서울/종로구/`) |
+| title · h1 | 전국에서 **유일**. 겹치면 상위 지역을 붙임 (부산 중구 중앙동) |
+| meta description | 페이지별 고유 |
 | canonical | 전 페이지 |
 | og:image / twitter:image | 페이지마다 다른 시공 사진 |
-| 구조화 데이터 | `Plumber`, `Service`, `ImageObject`, `FAQPage`, `BreadcrumbList`, `WebSite` |
+| 구조화 데이터 | 전 페이지 `Plumber`(+`AggregateRating`·`Review`·`OfferCatalog`), `ImageObject`, `BreadcrumbList` / 지역·시공 페이지 `FAQPage`, `ItemList` / 시공 페이지 `Service`(+평점·후기) / 홈 `WebSite` |
 | 빵부스러기 | 화면 표시 + `BreadcrumbList` 동시 제공 |
-| sitemap | 색인 + 5개 분할 (main / services / sido / sgg / dong) |
-| 내부 링크 | 시도 → 시군구 → 행정구 → 동, 그리고 형제·인근 지역 상호 링크 |
+| sitemap | 색인 + 5개 분할 (main / services / sido / sgg / dong), 3,175 URL |
+| 내부 링크 | 페이지당 평균 **152개** (롱테일 앵커 평균 33개) |
 | 이미지 | `alt` 에 지역명·시공명 포함, `width`/`height` 지정, 히어로는 `fetchpriority="high"` |
+
+### 롱테일 내부링크 구조
+
+모든 페이지에 검색어에 가까운 앵커 문구로 다음 단계를 연결합니다.
+
+| 페이지 | 롱테일 블록 |
+| --- | --- |
+| 홈 · 안내 페이지 | 증상으로 찾기(16개) + 지역 × 시공(32개) |
+| 시·도 | `{시도} {시공}` 21개 → 시공 페이지 · `{시군구} {시공}` → 시·군·구 페이지 |
+| 시·군·구 / 행정구 | `{지역} {시공}` 21개 · `{하위지역} {시공}` → 하위 페이지 |
+| 행정동 | `{동} {시공}` 21개 · `{인근 동} {시공}` → 인근 동 페이지 |
+| 시공 페이지 | `{시도} {시공}` 16개 → 지역 페이지 · 증상 16개 |
+
+하위 지역 링크는 시공명을 돌려가며 붙여(`강남구 하수구막힘`, `강동구 누수탐지` …)
+같은 문구가 반복되지 않게 했습니다.
+
+### ⚠ 후기·평점 구조화 데이터
+
+`AggregateRating` 과 `Review` 는 `tools/site_data.py` 의 `REVIEWS` 목록에서 **자동 계산**됩니다.
+지금 값(★4.9 · 8건)은 예시 후기에서 나온 것이므로, **실제로 받은 후기로 교체한 뒤 배포하세요.**
+받지 않은 후기를 구조화 데이터로 표시하면 검색엔진 정책 위반이며 수동 조치 대상이 됩니다.
+숫자를 임의로 부풀리지 않도록 개수·평균을 목록에서 그대로 계산하게 만들어 두었고,
+화면(푸터·후기 페이지 배지)에도 같은 값을 노출해 표시 내용과 구조화 데이터가 일치합니다.
+
+> 참고: 구글은 2019년부터 자사 사이트에 올린 자기 리뷰(self-serving review)를
+> `LocalBusiness` 리치 결과로 표시하지 않습니다. 네이버 등 다른 엔진과 정보 정확성을 위해
+> 마크업은 유지하되, 별점 리치 스니펫은 기대하지 않는 편이 좋습니다.
 
 배포 후 [Google Search Console](https://search.google.com/search-console)에 `sitemap.xml` 을 제출하세요.
 3,000개가 넘는 페이지라 전부 색인되기까지 몇 주가 걸립니다.

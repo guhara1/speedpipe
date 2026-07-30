@@ -28,8 +28,10 @@ from site_data import (  # noqa: E402
     BRAND, TEL, TEL_HREF, TEL_INTL, SITE, OWNER, YEAR,
     PHOTOS, photo_src, photo_abs,
     CATEGORIES, SERVICES, PRICE_ROWS, REVIEWS, FAQ_MAIN,
-    STEPS, AUTHORITY,
+    STEPS, AUTHORITY, rating_summary,
 )
+
+RATING, RATING_COUNT = rating_summary()
 
 PAGES = []          # (경로, 우선순위, 변경주기, 묶음)
 
@@ -39,8 +41,9 @@ def esc(s):
             .replace(">", "&gt;").replace('"', "&quot;"))
 
 
-def up(depth):
-    return "../" * depth
+def up(depth=0):
+    """모든 내부 링크는 루트 절대경로를 쓴다. depth 인자는 하위 호환용."""
+    return "/"
 
 
 def stable(*parts):
@@ -70,29 +73,32 @@ def sido_slug(r):
 
 
 # ---------------------------------------------------------------- 경로 계산
-def region_href(r, depth):
-    return "%sregions/%s.html" % (up(depth), sido_slug(r))
+# URL 은 확장자 없이 끝에 슬래시를 붙인 디렉터리 형태로 만든다.
+#   /regions/서울/종로구/  →  regions/서울/종로구/index.html
+def region_href(r, depth=0):
+    return "/regions/%s/" % sido_slug(r)
 
 
-def sgg_href(r, c, depth):
-    return "%sregions/%s/%s.html" % (up(depth), sido_slug(r), c["name"])
+def sgg_href(r, c, depth=0):
+    return "/regions/%s/%s/" % (sido_slug(r), c["name"])
 
 
-def gu_href(r, c, g, depth):
-    return "%sregions/%s/%s/%s.html" % (up(depth), sido_slug(r), c["name"], g["name"])
+def gu_href(r, c, g, depth=0):
+    return "/regions/%s/%s/%s/" % (sido_slug(r), c["name"], g["name"])
 
 
-def dong_href(r, c, g, dong, depth):
+def dong_href(r, c, g, dong, depth=0):
     mid = "%s/%s" % (c["name"], g["name"]) if g else c["name"]
-    return "%sregions/%s/%s/%s.html" % (up(depth), sido_slug(r), mid, dong)
+    return "/regions/%s/%s/%s/" % (sido_slug(r), mid, dong)
 
 
-def service_href(name, depth):
-    return "%sservices/%s.html" % (up(depth), name)
+def service_href(name, depth=0):
+    return "/services/%s/" % name
 
 
-def canon(path):
-    return "/" + path.replace(os.sep, "/")
+def url_to_path(url):
+    """URL(/regions/서울/) → 파일 경로(regions/서울/index.html)"""
+    return os.path.join(*(url.strip("/").split("/") + ["index.html"])) if url != "/" else "index.html"
 
 
 def count_dongs(region):
@@ -177,7 +183,7 @@ def head(title, desc, depth, canonical, schema=None, og_image=None, og_alt=""):
              '<meta name="format-detection" content="telephone=yes">',
              '<link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>',
              '<link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/pretendardvariable-dynamic-subset.min.css">',
-             '<link rel="stylesheet" href="%sassets/css/main.css">' % u,
+             '<link rel="stylesheet" href="/assets/css/main.css">',
              '<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns=\'http://www.w3.org/2000/svg\' viewBox=\'0 0 32 32\'%3E%3Crect width=\'32\' height=\'32\' rx=\'8\' fill=\'%230B1B2E\'/%3E%3Cpath d=\'M8 12h6v6H8zM14 15h5a3 3 0 0 1 3 3v4\' stroke=\'%23FF6A00\' stroke-width=\'2.4\' fill=\'none\' stroke-linecap=\'round\'/%3E%3C/svg%3E">',
              ]
     for s in (schema or []):
@@ -197,8 +203,8 @@ def service_menu(depth):
         links = "".join('<li><a href="%s">%s</a></li>' % (service_href(s["name"], depth), s["name"])
                         for s in items)
         cols.append('<div><h5>%s</h5><ul>%s</ul></div>' % (esc(cat), links))
-    cols.append('<div class="menu__foot"><a href="%sservices/index.html">전체 서비스 %d개 모두 보기 →</a></div>'
-                % (up(depth), len(SERVICES)))
+    cols.append('<div class="menu__foot"><a href="/services/">전체 서비스 %d개 모두 보기 →</a></div>'
+                % len(SERVICES))
     return "".join(cols)
 
 
@@ -208,8 +214,8 @@ def region_menu(depth):
         rs = [r for r in REGIONS if r["area"] == area]
         links = "".join('<li><a href="%s">%s</a></li>' % (region_href(r, depth), r["short"]) for r in rs)
         cols.append('<div><h5>%s</h5><ul>%s</ul></div>' % (esc(area), links))
-    cols.append('<div class="menu__foot"><a href="%sregions/index.html">전국 %s개 읍·면·동 찾기 →</a></div>'
-                % (up(depth), DONG_FMT))
+    cols.append('<div class="menu__foot"><a href="/regions/">전국 %s개 읍·면·동 찾기 →</a></div>'
+                % DONG_FMT)
     return "".join(cols)
 
 
@@ -220,7 +226,7 @@ def header(depth, active=""):
     return """
 <header class="site-header">
   <div class="wrap header-inner">
-    <a class="brand" href="%(u)sindex.html" aria-label="%(brand)s 홈">
+    <a class="brand" href="/" aria-label="%(brand)s 홈">
       <span class="brand__mark" aria-hidden="true">%(logo)s</span>
       <span class="brand__text"><b>%(brand)s</b><span>SPEED PIPE 24H</span></span>
     </a>
@@ -235,10 +241,10 @@ def header(depth, active=""):
           <button type="button" aria-haspopup="true"%(a_reg)s>지역별 출동</button>
           <div class="menu menu--regions">%(reg_menu)s</div>
         </li>
-        <li><a href="%(u)spricing.html"%(a_price)s>비용안내</a></li>
-        <li><a href="%(u)sgallery.html"%(a_gal)s>시공사례</a></li>
-        <li><a href="%(u)sreviews.html"%(a_rev)s>고객후기</a></li>
-        <li><a href="%(u)sabout.html"%(a_about)s>회사소개</a></li>
+        <li><a href="/pricing/"%(a_price)s>비용안내</a></li>
+        <li><a href="/gallery/"%(a_gal)s>시공사례</a></li>
+        <li><a href="/reviews/"%(a_rev)s>고객후기</a></li>
+        <li><a href="/about/"%(a_about)s>회사소개</a></li>
       </ul>
     </nav>
 
@@ -255,14 +261,14 @@ def header(depth, active=""):
 
 <div class="mobilenav" id="mobilenav">
   <details data-clone=".menu--mega"><summary>서비스 (%(nsvc)d)</summary>
-    <div class="mob-links"><a href="%(u)sservices/index.html">전체 서비스 보기</a></div></details>
+    <div class="mob-links"><a href="/services/">전체 서비스 보기</a></div></details>
   <details data-clone=".menu--regions"><summary>지역별 출동 (%(nreg)d)</summary>
-    <div class="mob-links"><a href="%(u)sregions/index.html">전국 지역 보기</a></div></details>
-  <a href="%(u)sregions/index.html">우리 동네 찾기</a>
-  <a href="%(u)spricing.html">비용안내</a>
-  <a href="%(u)sgallery.html">시공사례</a>
-  <a href="%(u)sreviews.html">고객후기</a>
-  <a href="%(u)sabout.html">회사소개</a>
+    <div class="mob-links"><a href="/regions/">전국 지역 보기</a></div></details>
+  <a href="/regions/">우리 동네 찾기</a>
+  <a href="/pricing/">비용안내</a>
+  <a href="/gallery/">시공사례</a>
+  <a href="/reviews/">고객후기</a>
+  <a href="/about/">회사소개</a>
   <a class="btn btn--accent btn--block" href="%(telhref)s">%(phone)s %(tel)s 전화 상담</a>
 </div>
 """ % dict(u=up(depth), brand=BRAND, logo=ICONS["logo"], phone=ICONS["phone"],
@@ -300,33 +306,34 @@ def footer(depth, cta=None):
   <div class="wrap">
     <div class="footer-grid">
       <div class="footer-brand">
-        <a class="brand" href="%(u)sindex.html">
+        <a class="brand" href="/">
           <span class="brand__mark" aria-hidden="true">%(logo)s</span>
           <span class="brand__text"><b>%(brand)s</b><span>SPEED PIPE 24H</span></span>
         </a>
         <p>
           상호 %(brand)s · 대표 %(owner)s<br>
           전국 16개 시·도 / %(nsgg)d개 시·군·구 / %(ndong)s개 읍·면·동 출동<br>
-          연중무휴 24시간 접수 · 방문 견적 무료
+          연중무휴 24시간 접수 · 방문 견적 무료<br>
+          고객 후기 <strong style="color:#fff;">%(rating)s</strong> / 5 · <a href="/reviews/">%(rcount)d건</a>
         </p>
         <a class="footer-tel" href="%(telhref)s">%(phone)s<b>%(tel)s</b></a>
       </div>
       <div>
         <h5>주요 서비스</h5>
-        <ul>%(svc)s<li><a href="%(u)sservices/index.html">전체 보기</a></li></ul>
+        <ul>%(svc)s<li><a href="/services/">전체 보기</a></li></ul>
       </div>
       <div>
         <h5>지역별 출동</h5>
-        <ul>%(reg)s<li><a href="%(u)sregions/index.html">우리 동네 찾기</a></li></ul>
+        <ul>%(reg)s<li><a href="/regions/">우리 동네 찾기</a></li></ul>
       </div>
       <div>
         <h5>안내</h5>
         <ul>
-          <li><a href="%(u)spricing.html">비용안내</a></li>
-          <li><a href="%(u)sgallery.html">시공사례</a></li>
-          <li><a href="%(u)sreviews.html">고객후기</a></li>
-          <li><a href="%(u)sabout.html">회사소개</a></li>
-          <li><a href="%(u)sfaq.html">자주 묻는 질문</a></li>
+          <li><a href="/pricing/">비용안내</a></li>
+          <li><a href="/gallery/">시공사례</a></li>
+          <li><a href="/reviews/">고객후기</a></li>
+          <li><a href="/about/">회사소개</a></li>
+          <li><a href="/faq/">자주 묻는 질문</a></li>
         </ul>
         <h5 style="margin-top:22px;">참고 기관</h5>
         <ul>%(auth)s</ul>
@@ -340,7 +347,7 @@ def footer(depth, cta=None):
 </footer>
 
 <nav class="callbar" aria-label="빠른 연락">
-  <a class="btn btn--ghost" href="%(u)sregions/index.html">지역 찾기</a>
+  <a class="btn btn--ghost" href="/regions/">지역 찾기</a>
   <a class="btn btn--accent" href="%(telhref)s">%(phone)s 전화 상담</a>
 </nav>
 
@@ -351,8 +358,8 @@ def footer(depth, cta=None):
   <div><img src="" alt=""><p class="lightbox__cap"></p></div>
 </div>
 
-<script src="%(u)sassets/js/regions-data.js" defer></script>
-<script src="%(u)sassets/js/main.js" defer></script>
+<script src="/assets/js/regions-data.js" defer></script>
+<script src="/assets/js/main.js" defer></script>
 </body>
 </html>
 """ % dict(cta=cta if cta is not None else cta_band(), u=u, brand=BRAND, owner=OWNER,
@@ -363,7 +370,7 @@ def footer(depth, cta=None):
                        for r in REGIONS[:8]),
            auth="".join('<li><a href="%s" target="_blank" rel="noopener nofollow">%s</a></li>' % (url, esc(n))
                         for n, url in AUTHORITY),
-           nsgg=TOTAL_SGG, ndong=DONG_FMT, year=YEAR)
+           nsgg=TOTAL_SGG, ndong=DONG_FMT, year=YEAR, rating=RATING, rcount=RATING_COUNT)
 
 
 # ------------------------------------------------------------------ 공통 조각
@@ -427,6 +434,35 @@ def faq_schema(pairs):
                             "acceptedAnswer": {"@type": "Answer", "text": a}} for q, a in pairs]}
 
 
+def rating_schema():
+    """게시된 후기에서 계산한 집계 평점. 후기 수를 임의로 늘리지 않는다."""
+    return {"@type": "AggregateRating", "ratingValue": str(RATING),
+            "reviewCount": str(RATING_COUNT), "bestRating": "5", "worstRating": "1"}
+
+
+def review_schema(limit=None):
+    out = []
+    for body, who, what, where, when, score in (REVIEWS[:limit] if limit else REVIEWS):
+        out.append({
+            "@type": "Review",
+            "author": {"@type": "Person", "name": who},
+            "datePublished": when,
+            "reviewBody": body,
+            "name": "%s · %s" % (where, what),
+            "reviewRating": {"@type": "Rating", "ratingValue": str(score),
+                             "bestRating": "5", "worstRating": "1"},
+        })
+    return out
+
+
+def itemlist_schema(name, items):
+    """하위 지역·서비스 목록을 ItemList 로 노출해 크롤러가 구조를 읽게 한다."""
+    return {"@context": "https://schema.org", "@type": "ItemList", "name": name,
+            "numberOfItems": len(items),
+            "itemListElement": [{"@type": "ListItem", "position": i + 1, "name": n,
+                                 "url": SITE + u} for i, (n, u) in enumerate(items)]}
+
+
 def biz_schema(area=None, name=None, url="/", image=None, desc=None):
     return {
         "@context": "https://schema.org",
@@ -445,6 +481,16 @@ def biz_schema(area=None, name=None, url="/", image=None, desc=None):
             "dayOfWeek": ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"],
             "opens": "00:00", "closes": "23:59"}],
         "founder": {"@type": "Person", "name": OWNER},
+        "aggregateRating": rating_schema(),
+        "review": review_schema(4),
+        "hasOfferCatalog": {
+            "@type": "OfferCatalog", "name": "배관 시공 항목",
+            "itemListElement": [
+                {"@type": "Offer", "itemOffered": {"@type": "Service", "name": sv["name"],
+                                                   "url": SITE + service_href(sv["name"])},
+                 "priceCurrency": "KRW", "description": sv["price"]}
+                for sv in SERVICES],
+        },
     }
 
 
@@ -463,7 +509,7 @@ def breadcrumb_schema(trail):
 
 
 def breadcrumb_html(trail, depth):
-    bits = ['<a href="%sindex.html">홈</a>' % up(depth)]
+    bits = ['<a href="/">홈</a>']
     for name, href in trail:
         bits.append('<span class="sep">/</span>')
         bits.append('<a href="%s">%s</a>' % (href, esc(name)) if href else '<span>%s</span>' % esc(name))
@@ -496,14 +542,83 @@ def price_table(rows=None, note=True):
 def reviews_html(limit=None):
     items = REVIEWS[:limit] if limit else REVIEWS
     out = ['<div class="grid g-3">']
-    for text, who, what, where in items:
+    for text, who, what, where, when, score in items:
         out.append(
-            '<article class="review reveal"><div class="review__stars" aria-label="별점 5점 만점에 5점">★★★★★</div>'
+            '<article class="review reveal">'
+            '<div class="review__stars" aria-label="별점 5점 만점에 %d점">%s</div>'
             '<p>%s</p><footer><span class="review__avatar" aria-hidden="true">%s</span>'
-            '<span class="review__meta"><b>%s</b><span>%s · %s</span></span></footer></article>'
-            % (esc(text), esc(who[0]), esc(who), esc(where), esc(what)))
+            '<span class="review__meta"><b>%s</b><span>%s · %s</span></span>'
+            '<time datetime="%s">%s</time></footer></article>'
+            % (score, "★" * score + "☆" * (5 - score), esc(text), esc(who[0]), esc(who),
+               esc(where), esc(what), esc(when), esc(when.replace("-", ".")[2:])))
     out.append('</div>')
     return "".join(out)
+
+
+def rating_badge():
+    """화면에도 평점을 보여준다(구조화 데이터와 표시 내용이 일치해야 한다)."""
+    full = int(RATING)
+    return ('<div class="rating-badge">'
+            '<span class="rating-badge__stars" aria-hidden="true">%s</span>'
+            '<b>%s</b><span>고객 후기 %d건 평균</span></div>'
+            % ("★" * full + ("☆" if RATING - full < 0.5 else "★"), RATING, RATING_COUNT))
+
+
+# 증상 문구 → 담당 시공 페이지. 검색어에 가까운 표현을 앵커로 쓴다.
+SYMPTOM_LINKS = [
+    ("물이 역류하고 안 내려가요", "하수구막힘"),
+    ("싱크대 물이 고여서 안 빠져요", "싱크대하수구막힘"),
+    ("변기가 막혀 물이 넘쳐요", "변기막힘"),
+    ("세면대 물이 천천히 빠져요", "세면대막힘"),
+    ("욕실 바닥에 물이 차요", "배수구막힘"),
+    ("주방 배수구에서 냄새가 나요", "주방배수구막힘"),
+    ("아랫집 천장에 물이 새요", "욕실배관누수"),
+    ("안 쓰는데 수도 계량기가 돌아요", "수도누수"),
+    ("벽지·천장에 얼룩이 번져요", "누수탐지"),
+    ("싱크대 아래가 젖어 있어요", "주방배관누수"),
+    ("수전에서 물이 똑똑 떨어져요", "수전교체"),
+    ("변기 물이 계속 흘러요", "변기부속품수리"),
+    ("녹물이 나와요", "배관설비"),
+    ("겨울에 배관이 얼었어요", "수도수리"),
+    ("변기·세면대가 낡아 바꾸고 싶어요", "화장실변기교체"),
+    ("샤워기 수압이 약해요", "화장실수전교체"),
+]
+
+
+def topic_block(eyebrow, title, lead, links, wash=False):
+    """롱테일 주제 묶음. 앵커 문구가 실제 검색어에 가깝도록 구성한다."""
+    return """
+<section class="section-sm%(cls)s">
+  <div class="wrap">
+    <div class="section-head" style="margin-bottom:20px;">
+      <p class="eyebrow">%(eyebrow)s</p>
+      <h2 style="font-size:clamp(1.25rem,1.1rem + .8vw,1.65rem);">%(title)s</h2>
+      %(lead)s
+    </div>
+    <div class="topiccloud">%(links)s</div>
+  </div>
+</section>
+""" % dict(cls=" section--wash" if wash else "", eyebrow=esc(eyebrow), title=esc(title),
+           lead=('<p class="lead">%s</p>' % esc(lead)) if lead else "",
+           links="".join('<a href="%s">%s</a>' % (h, esc(t)) for t, h in links))
+
+
+def symptom_topic_links():
+    return [(t, service_href(n)) for t, n in SYMPTOM_LINKS]
+
+
+def service_topic_links(area_name, depth=0):
+    """{지역} {시공} 형태의 롱테일 앵커 21개 → 각 시공 페이지."""
+    return [("%s %s" % (area_name, sv["name"]), service_href(sv["name"], depth)) for sv in SERVICES]
+
+
+def child_topic_links(children, offset=0):
+    """{하위지역} {시공} 형태. 시공명을 돌려가며 앵커를 다양화한다."""
+    out = []
+    for i, (name, href) in enumerate(children):
+        sv = SERVICES[(i + offset) % len(SERVICES)]["name"]
+        out.append(("%s %s" % (name, sv), href))
+    return out
 
 
 def link_grid(links):
@@ -511,7 +626,9 @@ def link_grid(links):
         '<a href="%s">%s</a>' % (h, esc(t)) for t, h in links)
 
 
-def write(path, html):
+def write(url, html):
+    """URL 을 받아 <디렉터리>/index.html 로 저장한다. .xml 등은 그대로."""
+    path = url if url.endswith((".xml", ".txt")) or url == "_redirects" else url_to_path(url)
     full = os.path.join(ROOT, path)
     d = os.path.dirname(full)
     if d and not os.path.isdir(d):
@@ -555,11 +672,11 @@ def page_hero(eyebrow, h1, lead, chips, crumb, fid, cap, alt, depth,
 def build_index():
     depth = 0
     extra_links = {
-        "부속 · 사후관리": [("비용 전체 보기", "pricing.html"), ("시공 현장 사진", "gallery.html"),
-                            ("보증·AS 기준", "about.html"), ("자주 묻는 질문", "faq.html")],
-        "누수 진단 · 시공": [("누수 비용 알아보기", "pricing.html")],
-        "교체 · 설치": [("자재 직접 구매 시 안내", "pricing.html")],
-        "막힘 제거": [("막힘 비용 알아보기", "pricing.html")],
+        "부속 · 사후관리": [("비용 전체 보기", "/pricing/"), ("시공 현장 사진", "/gallery/"),
+                            ("보증·AS 기준", "/about/"), ("자주 묻는 질문", "/faq/")],
+        "누수 진단 · 시공": [("누수 비용 알아보기", "/pricing/")],
+        "교체 · 설치": [("자재 직접 구매 시 안내", "/pricing/")],
+        "막힘 제거": [("막힘 비용 알아보기", "/pricing/")],
     }
     cat_cards = []
     for cat, _slug, blurb in CATEGORIES:
@@ -581,7 +698,10 @@ def build_index():
     schema = [biz_schema(image=photo_abs(PHOTOS[0][0], 1200)),
               faq_schema(FAQ_MAIN[:6]),
               image_schema(PHOTOS[0][0], PHOTOS[0][1], "/"),
-              {"@context": "https://schema.org", "@type": "WebSite", "name": BRAND, "url": SITE + "/"}]
+              itemlist_schema("시공 항목", [(sv["name"], service_href(sv["name"])) for sv in SERVICES]),
+              itemlist_schema("출동 시·도", [(r["short"], region_href(r)) for r in REGIONS]),
+              {"@context": "https://schema.org", "@type": "WebSite", "name": BRAND,
+               "url": SITE + "/", "inLanguage": "ko-KR"}]
 
     html = head("%s | 전국 배관공사·하수구막힘·누수탐지 24시간 출동" % BRAND,
                 "하수구막힘, 배관막힘, 변기막힘, 누수탐지, 수전교체까지 전국 16개 시·도 %s개 읍·면·동 24시간 출동. "
@@ -618,6 +738,7 @@ def build_index():
 <div class="trustbar">
   <div class="wrap">
     <ul>
+      <li>%(check)s 고객 후기 <strong>%(rating)s</strong> / 5 (%(rcount)d건)</li>
       <li>%(check)s 방문 견적 무료</li>
       <li>%(check)s 확정 금액 승인 후 시공</li>
       <li>%(check)s 추가 청구 없음</li>
@@ -673,7 +794,7 @@ def build_index():
       <p class="lead">스피드배관이 직접 시공한 현장 사진입니다. 사진을 누르면 크게 볼 수 있습니다.</p>
     </div>
     %(gal)s
-    <div class="btn-row mt-3"><a class="btn btn--ghost" href="gallery.html">시공사례 전체 보기</a></div>
+    <div class="btn-row mt-3"><a class="btn btn--ghost" href="/gallery/">시공사례 전체 보기</a></div>
   </div>
 </section>
 
@@ -685,7 +806,7 @@ def build_index():
       <p class="lead">가장 많이 문의 주시는 항목의 평균 비용 범위입니다. 현장에서 금액이 바뀌는 경우에는 반드시 사전에 설명드립니다.</p>
     </div>
     %(price)s
-    <div class="btn-row mt-2"><a class="btn btn--ghost" href="pricing.html">항목별 비용 자세히 보기</a></div>
+    <div class="btn-row mt-2"><a class="btn btn--ghost" href="/pricing/">항목별 비용 자세히 보기</a></div>
   </div>
 </section>
 
@@ -697,7 +818,7 @@ def build_index():
       <p class="lead">실제 시공 후 남겨주신 후기 중 일부입니다.</p>
     </div>
     %(revs)s
-    <div class="btn-row mt-3"><a class="btn btn--ghost" href="reviews.html">후기 더 보기</a></div>
+    <div class="btn-row mt-3"><a class="btn btn--ghost" href="/reviews/">후기 더 보기</a></div>
   </div>
 </section>
 
@@ -738,20 +859,32 @@ def build_index():
   <div class="wrap">
     <div class="section-head"><p class="eyebrow">FAQ</p><h2>자주 묻는 질문</h2></div>
     %(faq)s
-    <div class="btn-row mt-2"><a class="btn btn--ghost" href="faq.html">질문 전체 보기</a></div>
+    <div class="btn-row mt-2"><a class="btn btn--ghost" href="/faq/">질문 전체 보기</a></div>
   </div>
 </section>
+
+%(sym)s
+%(regtopic)s
 
 </main>
 """ % dict(nsgg=TOTAL_SGG, ndong=DONG_FMT, telhref=TEL_HREF, tel=TEL,
            phone=ICONS["phone"], check=ICONS["check"], shield=ICONS["shield"], won=ICONS["won"],
+           rating=RATING, rcount=RATING_COUNT,
            heroimg=hero_photos, cats="".join(cat_cards), tool=region_tool(depth=depth),
            chips="".join('<a class="chip" href="%s">%s <span style="color:var(--muted-2);font-family:var(--mono);font-size:.78em;">%d</span></a>'
                          % (region_href(r, depth), esc(r["short"]), len(r["children"])) for r in REGIONS),
            steps=steps_html(), gal=gallery_html(depth, limit=8),
-           price=price_table(), revs=reviews_html(3), faq=faq_html(FAQ_MAIN[:6]), owner=OWNER)
+           price=price_table(), revs=reviews_html(3), faq=faq_html(FAQ_MAIN[:6]), owner=OWNER,
+           sym=topic_block("BY SYMPTOM", "증상으로 바로 찾기",
+                           "지금 겪고 계신 상황과 가장 가까운 문장을 누르면 담당 시공 안내로 넘어갑니다.",
+                           symptom_topic_links(), wash=True),
+           regtopic=topic_block(
+               "BY REGION", "지역 × 시공으로 찾기",
+               "시·도별 출동 안내로 이어집니다. 시·군·구와 읍·면·동은 각 지역 페이지에서 이어집니다.",
+               child_topic_links([(r["short"], region_href(r)) for r in REGIONS], 6)
+               + child_topic_links([(r["short"], region_href(r)) for r in REGIONS], 0)))
     html += footer(depth)
-    write("index.html", html)
+    write("/", html)
     register("/", "1.0", "weekly")
 
 
@@ -759,7 +892,7 @@ def build_index():
 def build_service(svc):
     depth = 1
     name = svc["name"]
-    canonical = "/services/%s.html" % name
+    canonical = "/services/%s/" % name
     seed = stable("svc", name)
     fid, cap = PHOTOS[seed % len(PHOTOS)]
     alt = "%s 시공 현장 — %s" % (name, BRAND)
@@ -775,10 +908,13 @@ def build_service(svc):
          "provider": {"@type": "Plumber", "name": BRAND, "telephone": TEL_INTL},
          "areaServed": {"@type": "Country", "name": "대한민국"},
          "description": svc["summary"], "image": photo_abs(fid, 1200),
-         "offers": {"@type": "Offer", "priceCurrency": "KRW", "description": svc["price"]}},
+         "aggregateRating": rating_schema(),
+         "review": review_schema(3),
+         "offers": {"@type": "Offer", "priceCurrency": "KRW", "description": svc["price"],
+                    "availability": "https://schema.org/InStock"}},
         image_schema(fid, "%s — %s" % (name, cap), canonical),
         faq_schema(faqs),
-        breadcrumb_schema([("홈", "/"), ("서비스", "/services/index.html"), (name, canonical)]),
+        breadcrumb_schema([("홈", "/"), ("서비스", "/services/"), (name, canonical)]),
     ]
 
     html = head("%s 비용·출동 안내 | %s" % (name, BRAND),
@@ -788,7 +924,7 @@ def build_service(svc):
     html += header(depth, "services")
     html += page_hero(svc["cat"], esc(name), esc(svc["summary"]),
                       ["평균 %s" % svc["price"], "소요 %s" % svc["eta"], "전국 24시간 출동"],
-                      breadcrumb_html([("서비스", "index.html"), (name, "")], depth),
+                      breadcrumb_html([("서비스", "/services/"), (name, "")], depth),
                       fid, "%s 시공 현장" % name, alt, depth,
                       extra_btn=("내 동네 출동 확인", "#region"))
     html += """
@@ -827,7 +963,7 @@ def build_service(svc):
         <a class="tel-big" href="%(telhref)s">%(tel)s</a>
         <p style="margin:0;">연중무휴 24시간 · 방문 견적 무료</p>
         <a class="btn btn--accent btn--block" href="%(telhref)s">%(phone)s 지금 전화하기</a>
-        <a class="btn btn--ghost-dark btn--block mt-1" href="%(u)spricing.html">전체 비용표 보기</a>
+        <a class="btn btn--ghost-dark btn--block mt-1" href="/pricing/">전체 비용표 보기</a>
       </div>
     </aside>
   </div>
@@ -841,9 +977,11 @@ def build_service(svc):
       <p class="lead">시·도 → 시·군·구 → 행정동 순서로 눌러 내 동네를 확인해 보세요. 읍·면·동마다 개별 안내 페이지가 있습니다.</p>
     </div>
     %(tool)s
-    <div class="chips mt-3">%(topreg)s</div>
   </div>
 </section>
+
+%(topic1)s
+%(topic2)s
 </main>
 """ % dict(name=esc(name), price=esc(svc["price"]), eta=esc(svc["eta"]),
            symptoms="".join("<li>%s</li>" % esc(x) for x in svc["symptoms"]),
@@ -854,10 +992,12 @@ def build_service(svc):
                        for s in related),
            telhref=TEL_HREF, tel=TEL, phone=ICONS["phone"], u=up(depth),
            tool=region_tool(depth=depth),
-           topreg="".join('<a class="chip" href="%s">%s %s</a>'
-                          % (region_href(r, depth), esc(r["short"]), esc(name)) for r in REGIONS))
+           topic1=topic_block("%s 지역별" % name, "지역별 %s 출동 안내" % name, "",
+                              [("%s %s" % (r["short"], name), region_href(r)) for r in REGIONS], wash=True),
+           topic2=topic_block("함께 찾는 시공", "%s와 함께 많이 찾는 주제" % name, "",
+                              symptom_topic_links()))
     html += footer(depth)
-    write("services/%s.html" % name, html)
+    write(canonical, html)
     register(canonical, "0.8", "monthly", "services")
 
 
@@ -876,22 +1016,29 @@ def build_services_index():
                       '<div class="grid g-3">%s</div>' % (esc(CAT_ICON[cat].upper()), esc(cat), esc(blurb), cards))
 
     fid, cap = PHOTOS[1]
-    schema = [biz_schema(url="/services/index.html", image=photo_abs(fid, 1200)),
-              image_schema(fid, cap, "/services/index.html"),
-              breadcrumb_schema([("홈", "/"), ("서비스", "/services/index.html")])]
+    schema = [biz_schema(url="/services/", image=photo_abs(fid, 1200)),
+              image_schema(fid, cap, "/services/"),
+              itemlist_schema("시공 항목", [(sv["name"], service_href(sv["name"])) for sv in SERVICES]),
+              breadcrumb_schema([("홈", "/"), ("서비스", "/services/")])]
     html = head("전체 서비스 %d가지 | %s" % (len(SERVICES), BRAND),
                 "누수탐지·누수공사부터 하수구막힘, 변기막힘, 수전교체, 배관설비까지 %s의 전체 시공 항목과 평균 비용을 한눈에 확인하세요." % BRAND,
-                depth, "/services/index.html", schema, photo_abs(fid, 1200))
+                depth, "/services/", schema, photo_abs(fid, 1200))
     html += header(depth, "services")
     html += page_hero("ALL SERVICES", "배관에서 생기는 거의 모든 문제",
                       "%d가지 시공 항목을 네 갈래로 정리했습니다. 각 항목마다 평균 비용과 소요 시간을 함께 적어 두었습니다." % len(SERVICES),
                       ["전 항목 방문 견적 무료", "24시간 접수"],
                       breadcrumb_html([("서비스", "")], depth),
                       fid, cap, "%s 시공 현장 — %s" % (BRAND, cap), depth)
-    html += '<section class="section"><div class="wrap">%s</div></section></main>' % "".join(blocks)
+    html += '<section class="section"><div class="wrap">%s</div></section>' % "".join(blocks)
+    html += topic_block("BY SYMPTOM", "증상으로 바로 찾기",
+                        "지금 상황과 가장 가까운 문장을 누르면 담당 시공 안내로 넘어갑니다.",
+                        symptom_topic_links(), wash=True)
+    html += topic_block("BY REGION", "지역별 시공 안내", "",
+                        child_topic_links([(r["short"], region_href(r)) for r in REGIONS], 8))
+    html += "</main>"
     html += footer(depth)
-    write("services/index.html", html)
-    register("/services/index.html", "0.9", "monthly", "services")
+    write("/services/", html)
+    register("/services/", "0.9", "monthly", "services")
 
 
 # ------------------------------------------------------------------ 지역 문구
@@ -937,7 +1084,7 @@ def area_faqs(label, extra=()):
 def build_region(region):
     depth = 1
     short = region["short"]
-    canonical = "/regions/%s.html" % sido_slug(region)
+    canonical = "/regions/%s/" % sido_slug(region)
     n_sgg = len(region["children"])
     n_dong = count_dongs(region)
     seed = stable("sido", short)
@@ -962,7 +1109,9 @@ def build_region(region):
                    desc="%s 전역 배관공사·하수구막힘·누수탐지 24시간 출동" % region["name"]),
         image_schema(fid, "%s 시공 현장 — %s" % (short, cap), canonical),
         faq_schema(faqs),
-        breadcrumb_schema([("홈", "/"), ("지역별 출동", "/regions/index.html"), (short, canonical)]),
+        itemlist_schema("%s 시·군·구" % short,
+                        [(c["name"], sgg_href(region, c)) for c in region["children"]]),
+        breadcrumb_schema([("홈", "/"), ("지역별 출동", "/regions/"), (short, canonical)]),
     ]
 
     html = head("%s 배관공사·하수구막힘 24시간 출동 | %s" % (short, BRAND),
@@ -974,7 +1123,7 @@ def build_region(region):
                       "%s <span class=\"nb\">배관공사·하수구막힘</span> 출동" % esc(short),
                       esc(INTROS[seed % len(INTROS)].format(full=region["name"])),
                       ["%d개 시·군·구" % n_sgg, "%d개 읍·면·동" % n_dong, "24시간 접수"],
-                      breadcrumb_html([("지역별 출동", "index.html"), (short, "")], depth),
+                      breadcrumb_html([("지역별 출동", "/regions/"), (short, "")], depth),
                       fid, "%s 시공 현장" % short, alt, depth,
                       extra_btn=("우리 동 찾기", "#region"),
                       tel_label="%s %s 출동 요청" % (TEL, short))
@@ -1005,7 +1154,7 @@ def build_region(region):
   <div class="wrap">
     <div class="section-head"><p class="eyebrow">SERVICE</p><h2>%(short)s에서 많이 찾는 시공</h2></div>
     <div class="grid g-3">%(svc)s</div>
-    <div class="btn-row mt-3"><a class="btn btn--ghost" href="%(u)sservices/index.html">전체 서비스 보기</a></div>
+    <div class="btn-row mt-3"><a class="btn btn--ghost" href="/services/">전체 서비스 보기</a></div>
   </div>
 </section>
 
@@ -1038,6 +1187,9 @@ def build_region(region):
   </div>
 </section>
 
+%(topic1)s
+%(topic2)s
+
 <section class="section-sm section--paper">
   <div class="wrap">
     <h3 style="font-size:1rem;margin-bottom:12px;">다른 시·도 보기</h3>
@@ -1057,9 +1209,15 @@ def build_region(region):
            gal=gallery_html(depth, limit=4, start=(seed % (len(PHOTOS) - 4))),
            faq=faq_html(faqs),
            others="".join('<a class="chip" href="%s">%s</a>' % (region_href(r, depth), esc(r["short"]))
-                          for r in REGIONS if r is not region))
+                          for r in REGIONS if r is not region),
+           topic1=topic_block("%s 인기 주제" % short, "%s에서 많이 찾는 시공" % short,
+                              "시공 항목별 안내로 이어집니다.", service_topic_links(short), wash=True),
+           topic2=topic_block("%s 시·군·구" % short, "%s 시·군·구별 인기 주제" % short,
+                              "각 시·군·구 출동 안내로 이어집니다.",
+                              child_topic_links([(c["name"], sgg_href(region, c)) for c in region["children"]],
+                                                seed % len(SERVICES))))
     html += footer(depth)
-    write("regions/%s.html" % sido_slug(region), html)
+    write(canonical, html)
     register(canonical, "0.9", "monthly", "sido")
 
 
@@ -1069,9 +1227,7 @@ def build_area(region, c, g=None):
     label = g["name"] if g else c["name"]
     parent_label = c["name"] if g else region["short"]
     full = ("%s %s %s" % (region["name"], c["name"], g["name"])) if g else ("%s %s" % (region["name"], c["name"]))
-    path = (("regions/%s/%s/%s.html" % (sido_slug(region), c["name"], g["name"])) if g
-            else ("regions/%s/%s.html" % (sido_slug(region), c["name"])))
-    canonical = canon(path)
+    canonical = gu_href(region, c, g) if g else sgg_href(region, c)
     qual = LABELS[("gu", region["short"], c["name"], g["name"], "")] if g \
         else LABELS[("sgg", region["short"], c["name"], "", "")]
     seed = stable(region["short"], c["name"], g["name"] if g else "")
@@ -1116,14 +1272,15 @@ def build_area(region, c, g=None):
                    desc="%s 배관공사·하수구막힘·누수탐지 24시간 출동" % full),
         image_schema(fid, "%s 시공 현장 — %s" % (label, cap), canonical),
         faq_schema(faqs),
+        itemlist_schema("%s 하위 지역" % label, [(t, h) for t, h, _n in kids]),
         breadcrumb_schema(
-            [("홈", "/"), ("지역별 출동", "/regions/index.html"),
-             (region["short"], "/regions/%s.html" % sido_slug(region))]
-            + ([(c["name"], "/regions/%s/%s.html" % (sido_slug(region), c["name"]))] if g else [])
+            [("홈", "/"), ("지역별 출동", "/regions/"),
+             (region["short"], "/regions/%s/" % sido_slug(region))]
+            + ([(c["name"], sgg_href(region, c))] if g else [])
             + [(label, canonical)]),
     ]
 
-    crumb_trail = [("지역별 출동", "%sregions/index.html" % up(depth)),
+    crumb_trail = [("지역별 출동", "/regions/"),
                    (region["short"], region_href(region, depth))]
     if g:
         crumb_trail.append((c["name"], sgg_href(region, c, depth)))
@@ -1196,6 +1353,9 @@ def build_area(region, c, g=None):
   </div>
 </section>
 
+%(topic1)s
+%(topic2)s
+
 <section class="section-sm section--wash">
   <div class="wrap">
     <h3 style="font-size:1rem;margin-bottom:12px;">%(sibt)s</h3>
@@ -1210,9 +1370,15 @@ def build_area(region, c, g=None):
            gal=gallery_html(depth, limit=4, start=(seed % (len(PHOTOS) - 4))),
            sibt=esc(sib_title),
            sibs="".join('<a class="chip" href="%s">%s</a>' % (h, esc(t)) for t, h in sibs),
-           telhref=TEL_HREF, tel=TEL, phone=ICONS["phone"])
+           telhref=TEL_HREF, tel=TEL, phone=ICONS["phone"],
+           topic1=topic_block("%s 인기 주제" % label, "%s에서 많이 찾는 시공" % label,
+                              "시공 항목별 안내로 이어집니다.", service_topic_links(label), wash=True),
+           topic2=topic_block("%s 하위 지역" % label,
+                              "%s %s별 인기 주제" % (label, "행정구" if has_gu else "읍·면·동"),
+                              "각 지역 출동 안내로 이어집니다.",
+                              child_topic_links([(t, h) for t, h, _n in kids], seed % len(SERVICES))))
     html += footer(depth)
-    write(path, html)
+    write(canonical, html)
     register(canonical, "0.7", "monthly", "sgg")
 
 
@@ -1223,9 +1389,7 @@ def build_dong(region, c, g, dong, siblings):
     full = ("%s %s %s %s" % (region["name"], c["name"], g["name"], dong)) if g \
         else ("%s %s %s" % (region["name"], c["name"], dong))
     short_full = ("%s %s %s" % (c["name"], g["name"], dong)) if g else ("%s %s" % (c["name"], dong))
-    path = (("regions/%s/%s/%s/%s.html" % (sido_slug(region), c["name"], g["name"], dong)) if g
-            else ("regions/%s/%s/%s.html" % (sido_slug(region), c["name"], dong)))
-    canonical = canon(path)
+    canonical = dong_href(region, c, g, dong)
     qual = LABELS[("dong", region["short"], c["name"], g["name"] if g else "", dong)]
     seed = stable(region["short"], c["name"], g["name"] if g else "", dong)
     fid, cap = PHOTOS[seed % len(PHOTOS)]
@@ -1246,15 +1410,17 @@ def build_dong(region, c, g, dong, siblings):
                    desc="%s 배관공사·하수구막힘·누수탐지 24시간 출동" % full),
         image_schema(fid, "%s 시공 현장 — %s" % (dong, cap), canonical),
         faq_schema(faqs),
+        itemlist_schema("%s 시공 항목" % dong,
+                        [("%s %s" % (dong, sv["name"]), service_href(sv["name"])) for sv in SERVICES]),
         breadcrumb_schema(
-            [("홈", "/"), ("지역별 출동", "/regions/index.html"),
-             (region["short"], "/regions/%s.html" % sido_slug(region)),
-             (c["name"], "/regions/%s/%s.html" % (sido_slug(region), c["name"]))]
-            + ([(g["name"], "/regions/%s/%s/%s.html" % (sido_slug(region), c["name"], g["name"]))] if g else [])
+            [("홈", "/"), ("지역별 출동", "/regions/"),
+             (region["short"], "/regions/%s/" % sido_slug(region)),
+             (c["name"], sgg_href(region, c))]
+            + ([(g["name"], gu_href(region, c, g))] if g else [])
             + [(dong, canonical)]),
     ]
 
-    crumb_trail = [("지역별 출동", "%sregions/index.html" % up(depth)),
+    crumb_trail = [("지역별 출동", "/regions/"),
                    (region["short"], region_href(region, depth)),
                    (c["name"], sgg_href(region, c, depth))]
     if g:
@@ -1323,6 +1489,9 @@ def build_dong(region, c, g, dong, siblings):
     %(near)s
   </div>
 </section>
+
+%(topic1)s
+%(topic2)s
 </main>
 """ % dict(dong=esc(dong), parent=esc(parent), parent_href=parent_href,
            why="".join("<li>%s</li>" % esc(w) for w in WHY),
@@ -1330,9 +1499,14 @@ def build_dong(region, c, g, dong, siblings):
            svc=link_grid([("%s %s" % (dong, s["name"]), service_href(s["name"], depth)) for s in SERVICES]),
            faq=faq_html(faqs),
            near=link_grid(near) if near else '<p class="lead">이 지역은 %s에 속한 단일 행정동입니다.</p>' % esc(parent),
-           telhref=TEL_HREF, tel=TEL, phone=ICONS["phone"])
+           telhref=TEL_HREF, tel=TEL, phone=ICONS["phone"],
+           topic1=topic_block("%s 인기 주제" % dong, "%s에서 많이 찾는 시공" % dong,
+                              "시공 항목별 상세 안내로 이어집니다.", service_topic_links(dong), wash=True),
+           topic2=topic_block("%s 인근 주제" % parent, "%s 인근 지역 인기 주제" % parent,
+                              "" if near else "이 지역은 단일 행정동입니다.",
+                              child_topic_links(near, seed % len(SERVICES))))
     html += footer(depth)
-    write(path, html)
+    write(canonical, html)
     register(canonical, "0.6", "monthly", "dong")
 
 
@@ -1354,13 +1528,14 @@ def build_regions_index():
                       '<div class="grid g-3">%s</div>' % (esc(area), cards))
 
     fid, cap = PHOTOS[2]
-    schema = [biz_schema(url="/regions/index.html", image=photo_abs(fid, 1200)),
-              image_schema(fid, cap, "/regions/index.html"),
-              breadcrumb_schema([("홈", "/"), ("지역별 출동", "/regions/index.html")])]
+    schema = [biz_schema(url="/regions/", image=photo_abs(fid, 1200)),
+              image_schema(fid, cap, "/regions/"),
+              itemlist_schema("출동 시·도", [(r["short"], region_href(r)) for r in REGIONS]),
+              breadcrumb_schema([("홈", "/"), ("지역별 출동", "/regions/")])]
     html = head("전국 지역별 배관 출동 안내 | %s" % BRAND,
                 "전국 16개 시·도, %d개 시·군·구, %s개 읍·면·동. 시·도 → 시·군·구 → 행정동 순서로 눌러 내 동네 전용 안내 페이지를 확인하세요."
                 % (TOTAL_SGG, DONG_FMT),
-                depth, "/regions/index.html", schema, photo_abs(fid, 1200))
+                depth, "/regions/", schema, photo_abs(fid, 1200))
     html += header(depth, "regions")
     html += page_hero("NATIONWIDE", "내 동네가 출동 지역인지<br>3초 만에 확인하세요",
                       "전국 16개 시·도 · %d개 시·군·구 · %s개 읍·면·동을 모두 담았습니다. 읍·면·동마다 개별 안내 페이지가 있습니다."
@@ -1384,33 +1559,50 @@ def build_regions_index():
     %(blocks)s
   </div>
 </section>
+%(topic1)s
+%(topic2)s
 </main>
-""" % dict(tool=region_tool(depth=depth), blocks="".join(blocks))
+""" % dict(tool=region_tool(depth=depth), blocks="".join(blocks),
+           topic1=topic_block("BY REGION", "시·도 × 시공으로 찾기",
+                              "시·도별 출동 안내로 이어집니다.",
+                              child_topic_links([(r["short"], region_href(r)) for r in REGIONS], 2)
+                              + child_topic_links([(r["short"], region_href(r)) for r in REGIONS], 11),
+                              wash=True),
+           topic2=topic_block("BY SYMPTOM", "증상으로 바로 찾기", "",
+                              symptom_topic_links()))
     html += footer(depth)
-    write("regions/index.html", html)
-    register("/regions/index.html", "0.9", "weekly", "sido")
+    write("/regions/", html)
+    register("/regions/", "0.9", "weekly", "sido")
 
 
 # ------------------------------------------------------------------ 안내 페이지
-def simple_page(path, title, desc, eyebrow, h1, lead, body, active="", priority="0.6",
+def simple_page(url, title, desc, eyebrow, h1, lead, body, active="", priority="0.6",
                 schema=None, photo_i=0, chips=(), crumb=None):
-    depth = path.count("/")
+    depth = 0
     crumb = crumb or h1
     fid, cap = PHOTOS[photo_i % len(PHOTOS)]
     schema = (schema or []) + [
-        biz_schema(url="/" + path, image=photo_abs(fid, 1200)),
-        image_schema(fid, cap, "/" + path),
-        breadcrumb_schema([("홈", "/"), (crumb, "/" + path)]),
+        biz_schema(url=url, image=photo_abs(fid, 1200)),
+        image_schema(fid, cap, url),
+        breadcrumb_schema([("홈", "/"), (crumb, url)]),
     ]
-    html = head(title, desc, depth, "/" + path, schema, photo_abs(fid, 1200))
+    html = head(title, desc, depth, url, schema, photo_abs(fid, 1200))
     html += header(depth, active)
     html += page_hero(eyebrow, h1, lead, list(chips) or ["24시간 접수", "방문 견적 무료"],
                       breadcrumb_html([(crumb, "")], depth),
                       fid, cap, "%s — %s" % (BRAND, cap), depth)
-    html += body + "\n</main>"
+    # 안내 페이지에도 증상·지역 롱테일 링크를 붙여 어디서든 다음 단계로 이어지게 한다.
+    html += body
+    html += topic_block("BY SYMPTOM", "증상으로 바로 찾기",
+                        "지금 상황과 가장 가까운 문장을 누르면 담당 시공 안내로 넘어갑니다.",
+                        symptom_topic_links(), wash=True)
+    html += topic_block("BY REGION", "지역별 출동 안내",
+                        "시·도를 누르면 시·군·구와 읍·면·동으로 이어집니다.",
+                        child_topic_links([(r["short"], region_href(r)) for r in REGIONS], 3))
+    html += "\n</main>"
     html += footer(depth)
-    write(path, html)
-    register("/" + path, priority)
+    write(url, html)
+    register(url, priority)
 
 
 def build_pricing():
@@ -1458,7 +1650,7 @@ def build_pricing():
         for s in SERVICES),
         pin=ICONS["pin"], won=ICONS["won"], clock=ICONS["clock"],
         faq=faq_html([FAQ_MAIN[0], FAQ_MAIN[1], FAQ_MAIN[3], FAQ_MAIN[6], FAQ_MAIN[4]]))
-    simple_page("pricing.html", "배관공사·하수구막힘 비용 안내 | %s" % BRAND,
+    simple_page("/pricing/", "배관공사·하수구막힘 비용 안내 | %s" % BRAND,
                 "하수구막힘 3만원대부터 누수탐지, 변기교체, 배관설비까지 %s의 시공 항목별 평균 비용과 소요 시간을 공개합니다." % BRAND,
                 "PRICING", "부르는 게 값이 되지 않도록",
                 "%d개 시공 항목의 평균 비용을 먼저 공개합니다. 현장에서 금액이 달라질 수 있는 조건까지 함께 적어 두었습니다." % len(SERVICES),
@@ -1480,7 +1672,7 @@ def build_gallery():
   </div>
 </section>
 """ % dict(n=len(PHOTOS), gal=gallery_html(0))
-    simple_page("gallery.html", "시공사례 · 현장 사진 | %s" % BRAND,
+    simple_page("/gallery/", "시공사례 · 현장 사진 | %s" % BRAND,
                 "%s가 직접 시공한 배관공사·하수구막힘·누수공사 현장 사진 %d장. 실제 작업 과정을 확인해 보세요." % (BRAND, len(PHOTOS)),
                 "GALLERY", "말보다 현장 사진",
                 "누수공사, 막힘 제거, 설비 교체까지 실제 작업 현장에서 남긴 기록입니다.",
@@ -1495,6 +1687,7 @@ def build_reviews():
       <p class="eyebrow">REVIEWS</p>
       <h2>시공을 받아보신 분들의 후기</h2>
       <p class="lead">실제 시공 후 남겨주신 후기입니다. 고객 성함은 개인정보 보호를 위해 일부만 표기합니다.</p>
+      <div class="mt-2">%(badge)s</div>
     </div>
     %(revs)s
     <div class="callout mt-3" style="max-width:none;">
@@ -1503,12 +1696,18 @@ def build_reviews():
     </div>
   </div>
 </section>
-""" % dict(revs=reviews_html())
-    simple_page("reviews.html", "고객 시공 후기 | %s" % BRAND,
+""" % dict(revs=reviews_html(), badge=rating_badge())
+    simple_page("/reviews/", "고객 시공 후기 | %s" % BRAND,
                 "%s에서 실제 시공을 받으신 고객들의 후기 모음. 하수구막힘, 누수공사, 변기·수전 교체 후기." % BRAND,
                 "REVIEWS", "고객이 직접 남긴 이야기",
                 "과장 없이, 시공을 받으신 분들이 남겨주신 그대로 싣습니다.",
-                body, "reviews", "0.7", photo_i=8, chips=("대가성 후기 없음", "시공 이력 확인 후 게시"), crumb="고객후기")
+                body, "reviews", "0.7", photo_i=8,
+                chips=("고객 후기 %s / 5" % RATING, "후기 %d건" % RATING_COUNT, "대가성 후기 없음"),
+                crumb="고객후기",
+                schema=[{"@context": "https://schema.org", "@type": "ItemList",
+                         "name": "%s 고객 후기" % BRAND, "numberOfItems": RATING_COUNT,
+                         "itemListElement": [{"@type": "ListItem", "position": i + 1, "item": rv}
+                                             for i, rv in enumerate(review_schema())]}])
 
 
 def build_about():
@@ -1583,7 +1782,7 @@ def build_about():
 """ % dict(owner=OWNER, brand=BRAND, tel=TEL, telhref=TEL_HREF, nsgg=TOTAL_SGG, ndong=DONG_FMT,
            auth="".join('<a class="chip" href="%s" target="_blank" rel="noopener nofollow">%s</a>' % (u, esc(n))
                         for n, u in AUTHORITY))
-    simple_page("about.html", "회사소개 · 시공 기준 | %s" % BRAND,
+    simple_page("/about/", "회사소개 · 시공 기준 | %s" % BRAND,
                 "%s는 원인을 먼저 특정하고 확정 금액을 승인받은 뒤에 시공합니다. 대표 이력과 시공 원칙, 보증 기준을 공개합니다." % BRAND,
                 "ABOUT", "믿고 부를 수 있는 배관",
                 "22년 현장 경력의 대표가 직접 검수하는 시공과 정보. 저희가 일하는 방식을 그대로 공개합니다.",
@@ -1608,7 +1807,7 @@ def build_faq():
 """ % dict(faq=faq_html(FAQ_MAIN),
            chips="".join('<a class="chip" href="%s">%s</a>' % (service_href(s["name"], 0), esc(s["name"]))
                          for s in SERVICES))
-    simple_page("faq.html", "자주 묻는 질문 | %s" % BRAND,
+    simple_page("/faq/", "자주 묻는 질문 | %s" % BRAND,
                 "출장비, 견적 취소, 야간 출동, 보증 기간, 결제 방법까지. %s에 가장 많이 물어보시는 질문과 답변." % BRAND,
                 "FAQ", "궁금한 것부터 풀고 시작합니다",
                 "비용, 출동, 보증에 대해 가장 많이 받는 질문을 모았습니다.",
@@ -1643,15 +1842,38 @@ def build_sitemap():
 
 
 # ------------------------------------------------------------------ main
+def build_redirects():
+    """옛 .html 주소를 새 주소로 301 보냄. Netlify 규칙 수 제한을 고려해
+    읍·면·동(2,861개)은 sitemap 재크롤에 맡기고 상위 페이지만 넣는다."""
+    # 목록 페이지는 예전에 <폴더>/index.html 이었고, 나머지는 <경로>.html 이었다.
+    INDEXES = {"/services/", "/regions/"}
+    lines = ["# 옛 .html 주소 → 확장자 없는 새 주소", "/index.html  /  301", ""]
+    for url, _pri, _freq, group in PAGES:
+        if group == "dong" or url == "/":
+            continue
+        old = url + "index.html" if url in INDEXES else url.rstrip("/") + ".html"
+        lines.append("%s  %s  301" % (old, url))
+    lines.append("")
+    write("_redirects", "\n".join(lines))
+    return len(lines)
+
+
 def main():
-    # 행정구역 이름이 바뀌면 옛 파일이 남으므로 지역 트리는 매번 새로 만든다.
-    for r in REGIONS:
-        d = os.path.join(ROOT, "regions", sido_slug(r))
-        if os.path.isdir(d):
-            shutil.rmtree(d)
+    # 옛 구조(.html 파일)가 남지 않도록 생성 대상 폴더를 통째로 새로 만든다.
+    for d in ("regions", "services"):
+        full = os.path.join(ROOT, d)
+        if os.path.isdir(full):
+            shutil.rmtree(full)
     for f in os.listdir(ROOT):
+        full = os.path.join(ROOT, f)
         if f.startswith("sitemap-") and f.endswith(".xml"):
-            os.remove(os.path.join(ROOT, f))
+            os.remove(full)
+        elif f.endswith(".html") and os.path.isfile(full):
+            os.remove(full)
+    for d in ("pricing", "gallery", "reviews", "about", "faq"):
+        full = os.path.join(ROOT, d)
+        if os.path.isdir(full):
+            shutil.rmtree(full)
 
     build_index()
     build_services_index()
@@ -1678,6 +1900,7 @@ def main():
     build_about()
     build_faq()
     sm = build_sitemap()
+    build_redirects()
 
     from collections import Counter
     cnt = Counter(g for _p, _pr, _f, g in PAGES)

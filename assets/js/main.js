@@ -314,16 +314,15 @@
   };
 
   // 선택한 지역의 개별 안내 페이지 주소.
-  // regions/<시도>/<시군구>/[<행정구>/]<동>.html
+  // /regions/<시도>/<시군구>/[<행정구>/]<동>/
   RegionPicker.prototype.pageUrl = function () {
     var i = 0;
     while (i < this.path.length && !this.path[i].slug) i++;
     if (i >= this.path.length) return '';
     var sido = this.path[i].short.replace(/·/g, '');
     var rest = this.path.slice(i + 1).map(function (n) { return n.name; });
-    if (!rest.length) return this.root_ + 'regions/' + encodeURIComponent(sido) + '.html';
     var segs = [sido].concat(rest).map(encodeURIComponent);
-    return this.root_ + 'regions/' + segs.join('/') + '.html';
+    return '/regions/' + segs.join('/') + '/';
   };
 
   /* -------------------------------------------------------------- 갤러리 */
