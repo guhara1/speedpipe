@@ -61,7 +61,7 @@ body{
 }
 ul,ol{list-style:none;}
 a{color:inherit;text-decoration:none;}
-img,svg,video{display:block;max-width:100%;}
+img,svg,video{display:block;max-width:100%;height:auto;}
 button,input,select,textarea{font:inherit;color:inherit;}
 button{background:none;border:0;cursor:pointer;}
 table{border-collapse:collapse;width:100%;}
@@ -556,6 +556,94 @@ small{font-size:.82em;}
 .review__avatar{width:38px;height:38px;border-radius:50%;background:linear-gradient(135deg,var(--brand-wash),var(--bg-2));display:grid;place-items:center;font-weight:800;color:var(--brand);font-size:.9rem;flex-shrink:0;}
 .review__meta b{display:block;font-size:.88rem;color:var(--ink);}
 .review__meta span{font-size:.78rem;color:var(--muted-2);font-family:var(--mono);}
+
+/* ---------- 블로그 ---------- */
+.page-hero__figure--wide{aspect-ratio:1200/630;}
+.postmeta{
+  display:flex;flex-wrap:wrap;align-items:center;gap:8px;
+  margin-top:16px;font-size:.86rem;color:#9FB8D2;font-family:var(--mono);
+}
+.postmeta span{opacity:.75;}
+
+.postcard{
+  display:flex;flex-direction:column;overflow:hidden;
+  background:var(--paper);border:1px solid var(--line);border-radius:var(--r-lg);
+  box-shadow:var(--shadow-1);
+  transition:transform .2s ease,box-shadow .2s ease,border-color .2s ease;
+}
+.postcard:hover{transform:translateY(-4px);box-shadow:var(--shadow-2);border-color:var(--line-2);}
+.postcard img{width:100%;aspect-ratio:1200/630;object-fit:cover;background:var(--ink);}
+.postcard__body{padding:22px 22px 24px;display:flex;flex-direction:column;gap:8px;flex:1;}
+.postcard__tag{
+  align-self:flex-start;font-family:var(--mono);font-size:.66rem;font-weight:700;
+  letter-spacing:.1em;text-transform:uppercase;color:var(--accent-ink);
+  background:var(--accent-wash);padding:4px 10px;border-radius:999px;
+}
+.postcard h3{font-size:1.1rem;line-height:1.4;}
+.postcard p{font-size:.92rem;color:var(--muted);line-height:1.7;flex:1;}
+.postcard__meta{font-family:var(--mono);font-size:.74rem;color:var(--muted-2);}
+
+/* 목차 */
+.toc{
+  background:var(--bg);border:1px solid var(--line);border-left:4px solid var(--accent);
+  border-radius:0 var(--r) var(--r) 0;padding:20px 24px;margin-bottom:36px;
+}
+.toc b{display:block;font-size:.9rem;color:var(--ink);margin-bottom:10px;}
+.toc ol{counter-reset:toc;display:flex;flex-direction:column;gap:6px;}
+.toc li{counter-increment:toc;}
+.toc a{
+  display:inline-flex;gap:9px;font-size:.95rem;color:var(--ink-soft);line-height:1.6;
+  border-bottom:1px solid transparent;
+}
+.toc a::before{
+  content:counter(toc);font-family:var(--mono);font-size:.78rem;font-weight:700;
+  color:var(--accent-ink);flex-shrink:0;padding-top:.15em;
+}
+.toc a:hover{color:var(--brand);border-bottom-color:var(--brand-2);}
+
+/* 본문 강조 상자 */
+.note{
+  border-radius:var(--r);padding:18px 22px;margin:24px 0;
+  border:1px solid var(--line);border-left-width:4px;
+}
+.note > strong{
+  display:block;font-size:.82rem;letter-spacing:.02em;margin-bottom:6px;
+}
+.note p strong{color:inherit;}
+.note p{font-size:.96rem;line-height:1.8;margin:0;}
+.note--warn{background:#FFF5F3;border-color:#F6C9BE;border-left-color:#D9432B;}
+.note--warn > strong{color:#B32D18;}
+.note--tip{background:var(--brand-wash);border-color:#C9DCF1;border-left-color:var(--brand-2);}
+.note--tip > strong{color:var(--brand);}
+
+/* 번호 목록 */
+.article ol.steps-list{counter-reset:step;display:flex;flex-direction:column;gap:14px;margin:0 0 20px;}
+.article ol.steps-list li{counter-increment:step;position:relative;padding-left:44px;font-size:1rem;line-height:1.85;}
+.article ol.steps-list li::before{
+  content:counter(step);position:absolute;left:0;top:.15em;
+  width:28px;height:28px;border-radius:50%;display:grid;place-items:center;
+  background:linear-gradient(135deg,var(--accent),var(--accent-2));color:#fff;
+  font-family:var(--mono);font-size:.8rem;font-weight:700;
+}
+.article .price-table{margin:22px 0;}
+.article .price-table td{font-size:.94rem;}
+.article section{scroll-margin-top:calc(var(--header-h) + 20px);}
+
+/* 작성자 박스 */
+.authorbox{
+  display:flex;gap:20px;align-items:flex-start;
+  background:linear-gradient(160deg,var(--bg),var(--bg-2));
+  border:1px solid var(--line);border-radius:var(--r-lg);
+  padding:24px;margin:44px 0 0;
+}
+.authorbox__mark{
+  width:52px;height:52px;border-radius:15px;flex-shrink:0;display:grid;place-items:center;
+  background:linear-gradient(140deg,var(--ink),var(--brand));color:#fff;
+}
+.authorbox__mark svg{width:26px;height:26px;}
+.authorbox b{display:block;font-size:1.02rem;color:var(--ink);margin-bottom:6px;}
+.authorbox p{font-size:.93rem;color:var(--muted);line-height:1.8;margin:0;}
+@media (max-width:520px){ .authorbox{flex-direction:column;gap:14px;} }
 
 /* ---------- 롱테일 주제 묶음 ---------- */
 .topiccloud{display:flex;flex-wrap:wrap;gap:8px;}

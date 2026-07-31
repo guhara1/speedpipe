@@ -55,6 +55,48 @@ tools/site_data.py          문구 · 가격 · 사진 등 콘텐츠 데이터
 tools/optimize_photos.py    드라이브 사진 → WebP 최적화
 tools/fetch_photos.sh       드라이브 사진 원본 내려받기
 tools/indexnow.py           네이버·빙·Yandex 색인 즉시 요청
+tools/blog_data.py          블로그 글 원고
+tools/make_thumbs.py        블로그 썸네일(글자 이미지) 생성
+```
+
+## 블로그
+
+`/blog/` 아래 3편. 검색용으로 분량만 늘린 글이 아니라, 읽는 사람이 그 자리에서
+따라 할 수 있는 절차를 담는 것을 기준으로 썼습니다.
+
+| 글 | 핵심 |
+| --- | --- |
+| [하수구가 막혔을 때, 업체 부르기 전 5분](/blog/하수구막힘-부르기전-5분/) | 직접 뚫리는 막힘과 아닌 막힘 구분, 하면 안 되는 조치 4가지 |
+| [수도요금이 갑자기 몇 배 나왔다면](/blog/수도요금-폭탄-누수-자가진단/) | 계량기·변기 색소 테스트 3단계 자가진단, 요금 감면 신청 절차 |
+| [아랫집에서 물이 샌다고 연락이 왔을 때](/blog/아랫집-물샌다-연락받았을때/) | 급수·배수·방수 원인 구분, 배상책임보험 접수 순서 |
+
+글쓰기 원칙은 `tools/blog_data.py` 맨 위에 적어 두었습니다.
+
+- 직접 해결되는 상황이면 "직접 하셔도 됩니다"라고 쓴다
+- 위험한 자가 조치는 이유까지 적어 말린다
+- 확실하지 않은 것은 단정하지 않고 확인처(관할 수도사업소·관리규약·보험 약관)를 알려준다
+
+### 썸네일 — 글자 이미지
+
+사진 대신 제목 글자를 그려 넣은 1200×630 WebP 입니다. 검색결과·SNS 미리보기에서
+무슨 글인지 바로 읽힙니다.
+
+```bash
+python3 tools/make_thumbs.py
+```
+
+`assets/img/blog/<slug>.webp` (30KB 이내) 와 목록 카드용 `-sm.webp` (12KB 이내) 를 만듭니다.
+한글 폰트는 시스템에서 자동으로 찾습니다(`FONT_CANDIDATES`). Pretendard 나 나눔고딕이
+설치되어 있으면 그쪽을 먼저 씁니다.
+
+### 새 글 추가
+
+`tools/blog_data.py` 의 `POSTS` 에 항목을 하나 더 넣고 두 줄을 실행하면 끝입니다.
+목차·구조화 데이터·사이트맵·RSS·홈 카드가 모두 자동으로 따라옵니다.
+
+```bash
+python3 tools/make_thumbs.py
+python3 tools/build_site.py
 ```
 
 ## 지역 페이지
@@ -181,6 +223,7 @@ python3 tools/build_site.py
 | meta description | 페이지별 고유 |
 | canonical | 전 페이지 |
 | og:image / twitter:image | 페이지마다 다른 시공 사진 |
+| 블로그 | `BlogPosting`(author·datePublished·image) + `FAQPage` + `Blog` + `ItemList` |
 | 구조화 데이터 | 전 페이지 `Plumber`(+`AggregateRating`·`Review`·`OfferCatalog`), `ImageObject`, `BreadcrumbList` / 지역·시공 페이지 `FAQPage`, `ItemList` / 시공 페이지 `Service`(+평점·후기) / 홈 `WebSite` |
 | 빵부스러기 | 화면 표시 + `BreadcrumbList` 동시 제공 |
 | sitemap | 색인 + 5개 분할 (main / services / sido / sgg / dong), 3,175 URL |

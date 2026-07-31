@@ -30,6 +30,7 @@ from site_data import (  # noqa: E402
     CATEGORIES, SERVICES, PRICE_ROWS, REVIEWS, FAQ_MAIN,
     STEPS, AUTHORITY, rating_summary, BUILD_DATE, INDEXNOW_KEY, VERIFY,
 )
+from blog_data import POSTS  # noqa: E402
 
 RATING, RATING_COUNT = rating_summary()
 
@@ -266,6 +267,7 @@ def header(depth, active=""):
         </li>
         <li><a href="/pricing/"%(a_price)s>비용안내</a></li>
         <li><a href="/gallery/"%(a_gal)s>시공사례</a></li>
+        <li><a href="/blog/"%(a_blog)s>생활정보</a></li>
         <li><a href="/reviews/"%(a_rev)s>고객후기</a></li>
         <li><a href="/about/"%(a_about)s>회사소개</a></li>
       </ul>
@@ -290,6 +292,7 @@ def header(depth, active=""):
   <a href="/regions/">우리 동네 찾기</a>
   <a href="/pricing/">비용안내</a>
   <a href="/gallery/">시공사례</a>
+  <a href="/blog/">배관 생활정보</a>
   <a href="/reviews/">고객후기</a>
   <a href="/about/">회사소개</a>
   <a class="btn btn--accent btn--block" href="%(telhref)s">%(phone)s %(tel)s 전화 상담</a>
@@ -299,7 +302,7 @@ def header(depth, active=""):
            svc_menu=service_menu(depth), reg_menu=region_menu(depth),
            nsvc=len(SERVICES), nreg=len(REGIONS),
            a_svc=cur("services"), a_reg=cur("regions"), a_price=cur("pricing"),
-           a_gal=cur("gallery"), a_rev=cur("reviews"), a_about=cur("about"))
+           a_gal=cur("gallery"), a_rev=cur("reviews"), a_about=cur("about"), a_blog=cur("blog"))
 
 
 def cta_band(title="지금 바로 통화하면, 오늘 안에 해결됩니다",
@@ -354,6 +357,7 @@ def footer(depth, cta=None):
         <ul>
           <li><a href="/pricing/">비용안내</a></li>
           <li><a href="/gallery/">시공사례</a></li>
+          <li><a href="/blog/">배관 생활정보</a></li>
           <li><a href="/reviews/">고객후기</a></li>
           <li><a href="/about/">회사소개</a></li>
           <li><a href="/faq/">자주 묻는 질문</a></li>
@@ -424,12 +428,13 @@ def region_tool(scope="", depth=0, placeholder="동 이름으로 바로 찾기 (
            root=up(depth), icon=ICONS["search"], ph=esc(placeholder), telhref=TEL_HREF)
 
 
-def hero_figure(fid, cap, alt, depth):
-    """히어로 우측 사진. 검색결과 썸네일로 쓰이도록 모든 페이지에 넣는다."""
-    return ('<figure class="page-hero__figure">'
+def hero_figure(fid, cap, alt, depth, src=None, ratio=""):
+    """히어로 우측 그림. 검색결과 썸네일로 쓰이도록 모든 페이지에 넣는다."""
+    return ('<figure class="page-hero__figure%s">'
             '<img src="%s" alt="%s" width="800" height="600" fetchpriority="high" decoding="async">'
-            '<figcaption>%s</figcaption></figure>'
-            % (photo_src(fid, 1200, depth), esc(alt), esc(cap)))
+            '%s</figure>'
+            % (ratio, src or photo_src(fid, 1200, depth), esc(alt),
+               ('<figcaption>%s</figcaption>' % esc(cap)) if cap else ""))
 
 
 def gallery_html(depth, limit=None, start=0):
@@ -665,7 +670,7 @@ def register(path, priority, freq="monthly", group="main"):
 
 
 def page_hero(eyebrow, h1, lead, chips, crumb, fid, cap, alt, depth,
-              extra_btn=None, tel_label=None):
+              extra_btn=None, tel_label=None, img_src=None, img_ratio="", meta=""):
     btns = ['<a class="btn btn--accent btn--lg" href="%s">%s %s</a>'
             % (TEL_HREF, ICONS["phone"], esc(tel_label or (TEL + " 바로 전화")))]
     if extra_btn:
@@ -680,6 +685,7 @@ def page_hero(eyebrow, h1, lead, chips, crumb, fid, cap, alt, depth,
       <p class="eyebrow on-dark">%(eyebrow)s</p>
       <h1>%(h1)s</h1>
       <p class="lead">%(lead)s</p>
+      %(meta)s
       <div class="chips mt-2">%(chips)s</div>
       <div class="btn-row">%(btns)s</div>
     </div>
@@ -688,7 +694,8 @@ def page_hero(eyebrow, h1, lead, chips, crumb, fid, cap, alt, depth,
 </section>
 """ % dict(crumb=crumb, eyebrow=esc(eyebrow), h1=h1, lead=lead,
            chips="".join('<span class="chip chip--accent">%s</span>' % esc(c) for c in chips),
-           btns="".join(btns), fig=hero_figure(fid, cap, alt, depth))
+           btns="".join(btns), meta=meta,
+           fig=hero_figure(fid, cap, alt, depth, img_src, img_ratio))
 
 
 # ------------------------------------------------------------------ 홈
@@ -886,6 +893,18 @@ def build_index():
   </div>
 </section>
 
+<section class="section section--paper" id="blog">
+  <div class="wrap">
+    <div class="section-head">
+      <p class="eyebrow">FIELD NOTES</p>
+      <h2>부르기 전에 읽으면 돈이 덜 드는 글</h2>
+      <p class="lead">직접 해결되는 상황이면 그렇다고 씁니다. 현장에서 반복해 확인한 것만 담았습니다.</p>
+    </div>
+    <div class="grid g-3">%(posts)s</div>
+    <div class="btn-row mt-3"><a class="btn btn--ghost" href="/blog/">생활정보 전체 보기</a></div>
+  </div>
+</section>
+
 %(sym)s
 %(regtopic)s
 
@@ -898,6 +917,7 @@ def build_index():
                          % (region_href(r, depth), esc(r["short"]), len(r["children"])) for r in REGIONS),
            steps=steps_html(), gal=gallery_html(depth, limit=8),
            price=price_table(), revs=reviews_html(3), faq=faq_html(FAQ_MAIN[:6]), owner=OWNER,
+           posts="".join(post_card(p) for p in POSTS),
            sym=topic_block("BY SYMPTOM", "증상으로 바로 찾기",
                            "지금 겪고 계신 상황과 가장 가까운 문장을 누르면 담당 시공 안내로 넘어갑니다.",
                            symptom_topic_links(), wash=True),
@@ -1839,6 +1859,221 @@ def build_faq():
                 chips=("24시간 접수", "견적 무료", "하자보증"), crumb="자주 묻는 질문")
 
 
+# ------------------------------------------------------------------ 블로그
+def post_href(slug):
+    return "/blog/%s/" % slug
+
+
+def thumb_src(slug, small=False):
+    return "/assets/img/blog/%s%s.webp" % (slug, "-sm" if small else "")
+
+
+def thumb_abs(slug):
+    return "%s/assets/img/blog/%s.webp" % (SITE, slug)
+
+
+def render_blocks(blocks):
+    out = []
+    for kind, val in blocks:
+        if kind == "p":
+            out.append("<p>%s</p>" % val)
+        elif kind == "ul":
+            out.append('<ul class="bullets">%s</ul>' % "".join("<li>%s</li>" % x for x in val))
+        elif kind == "ol":
+            out.append('<ol class="steps-list">%s</ol>' % "".join("<li>%s</li>" % x for x in val))
+        elif kind == "warn":
+            out.append('<div class="note note--warn"><strong>주의</strong><p>%s</p></div>' % val)
+        elif kind == "tip":
+            out.append('<div class="note note--tip"><strong>알아두면 좋은 것</strong><p>%s</p></div>' % val)
+        elif kind == "table":
+            heads, rows = val
+            out.append('<div class="price-table"><table><thead><tr>%s</tr></thead><tbody>%s</tbody></table></div>'
+                       % ("".join("<th scope=\"col\">%s</th>" % h for h in heads),
+                          "".join("<tr>%s</tr>" % "".join("<td>%s</td>" % c for c in r) for r in rows)))
+    return "".join(out)
+
+
+def author_box():
+    return """
+<aside class="authorbox">
+  <div class="authorbox__mark">%(shield)s</div>
+  <div>
+    <b>%(owner)s · %(brand)s 대표</b>
+    <p>
+      배관설비 현장 22년. 아파트 세대 배관부터 상가·사무실 설비까지 직접 시공합니다.
+      이 글의 내용은 실제 출동 현장에서 반복해 확인한 것만 담았고, 확실하지 않은 부분은
+      확인처를 함께 적었습니다. 잘못된 내용을 발견하시면 알려주세요. 바로잡겠습니다.
+    </p>
+    <div class="chips mt-1">
+      <span class="chip">배관기능사</span><span class="chip">정화조기능사</span>
+      <span class="chip">연 시공 1,100건 이상</span>
+    </div>
+  </div>
+</aside>
+"""% dict(shield=ICONS["shield"], owner=OWNER, brand=BRAND)
+
+
+def build_post(post, prev_post, next_post):
+    slug = post["slug"]
+    canonical = post_href(slug)
+    title = post["title"]
+
+    toc = "".join('<li><a href="#s%d">%s</a></li>' % (i, esc(sec["h"]))
+                  for i, sec in enumerate(post["sections"], 1))
+    body = "".join(
+        '<section id="s%d"><h2>%s</h2>%s</section>'
+        % (i, esc(sec["h"]), render_blocks(sec["blocks"]))
+        for i, sec in enumerate(post["sections"], 1))
+
+    related = [sv for sv in SERVICES if sv["name"] in post["related"]]
+    others = [p for p in (prev_post, next_post) if p]
+
+    schema = [
+        {"@context": "https://schema.org", "@type": "BlogPosting",
+         "headline": title,
+         "description": post["desc"],
+         "image": [thumb_abs(slug)],
+         "datePublished": post["date"], "dateModified": post["updated"],
+         "inLanguage": "ko-KR",
+         "keywords": ", ".join(post["tags"]),
+         "articleSection": "배관 생활정보",
+         "author": {"@type": "Person", "name": OWNER, "jobTitle": "%s 대표" % BRAND,
+                    "worksFor": {"@type": "Organization", "name": BRAND}},
+         "publisher": {"@type": "Organization", "name": BRAND,
+                       "logo": {"@type": "ImageObject", "url": thumb_abs(slug)}},
+         "mainEntityOfPage": {"@type": "WebPage", "@id": SITE + canonical}},
+        faq_schema(post["faq"]),
+        breadcrumb_schema([("홈", "/"), ("블로그", "/blog/"), (title, canonical)]),
+        biz_schema(url=canonical, image=thumb_abs(slug)),
+    ]
+
+    html = head("%s | %s" % (title, BRAND), post["desc"], 0, canonical, schema,
+                thumb_abs(slug), title)
+    html = html.replace('<meta property="og:type" content="website">',
+                        '<meta property="og:type" content="article">\n'
+                        '<meta property="article:published_time" content="%s">\n'
+                        '<meta property="article:modified_time" content="%s">\n'
+                        '<meta property="article:author" content="%s">' % (post["date"], post["updated"], OWNER))
+    html += header(0, "blog")
+    html += page_hero(
+        "배관 생활정보", esc(title), esc(post["lead"]),
+        post["tags"],
+        breadcrumb_html([("블로그", "/blog/"), (title, "")], 0),
+        None, "", "%s — %s 블로그 썸네일" % (title, BRAND), 0,
+        extra_btn=("목차 바로가기", "#toc"),
+        img_src=thumb_src(slug), img_ratio=" page-hero__figure--wide",
+        meta='<p class="postmeta"><time datetime="%s">%s</time>'
+             '<span>·</span><span>읽는 데 약 %d분</span>'
+             '<span>·</span><span>%s 대표 작성·검수</span></p>'
+             % (post["date"], post["date"].replace("-", "."), post["read"], OWNER))
+
+    html += """
+<section class="section">
+  <div class="wrap layout-aside">
+    <article class="prose article">
+      <nav class="toc" id="toc" aria-label="목차">
+        <b>이 글의 순서</b>
+        <ol>%(toc)s</ol>
+      </nav>
+
+      %(body)s
+
+      <h2>자주 묻는 질문</h2>
+      %(faq)s
+
+      %(author)s
+
+      <h2>이 글과 관련된 시공</h2>
+      <div class="linkgrid">%(rel)s</div>
+    </article>
+
+    <aside class="sticky-card">
+      <div class="side-cta">
+        <h3>직접 해결이 안 되면</h3>
+        <p>증상을 말씀해 주시면 예상 원인과 비용 범위를 먼저 알려드립니다. 방문 견적은 무료입니다.</p>
+        <a class="tel-big" href="%(telhref)s">%(tel)s</a>
+        <p style="margin:0;">연중무휴 24시간 접수</p>
+        <a class="btn btn--accent btn--block" href="%(telhref)s">%(phone)s 지금 전화하기</a>
+        <a class="btn btn--ghost-dark btn--block mt-1" href="/regions/">내 동네 출동 확인</a>
+      </div>
+    </aside>
+  </div>
+</section>
+
+<section class="section section--paper">
+  <div class="wrap">
+    <div class="section-head"><p class="eyebrow">MORE</p><h2>다른 글도 읽어보세요</h2></div>
+    <div class="grid g-3">%(others)s</div>
+    <div class="btn-row mt-3"><a class="btn btn--ghost" href="/blog/">블로그 전체 보기</a></div>
+  </div>
+</section>
+""" % dict(toc=toc, body=body, faq=faq_html(post["faq"]), author=author_box(),
+           rel="".join('<a href="%s">%s</a>' % (service_href(sv["name"]), esc(sv["name"]))
+                       for sv in related),
+           telhref=TEL_HREF, tel=TEL, phone=ICONS["phone"],
+           others="".join(post_card(p) for p in others))
+
+    html += topic_block("BY SYMPTOM", "증상으로 바로 찾기", "", symptom_topic_links(), wash=True)
+    html += "\n</main>"
+    html += footer(0)
+    write(canonical, html)
+    register(canonical, "0.8", "monthly", "blog")
+
+
+def post_card(post):
+    return ('<a class="postcard reveal" href="%s">'
+            '<img src="%s" alt="%s" width="600" height="315" loading="lazy" decoding="async">'
+            '<div class="postcard__body">'
+            '<span class="postcard__tag">%s</span>'
+            '<h3>%s</h3><p>%s</p>'
+            '<span class="postcard__meta"><time datetime="%s">%s</time> · 읽는 데 약 %d분</span>'
+            '</div></a>'
+            % (post_href(post["slug"]), thumb_src(post["slug"], True),
+               esc("%s — 썸네일" % post["title"]), esc(post["tags"][0]),
+               esc(post["title"]), esc(post["lead"][:70] + "…"),
+               post["date"], post["date"].replace("-", "."), post["read"]))
+
+
+def build_blog_index():
+    cards = "".join(post_card(p) for p in POSTS)
+    schema = [biz_schema(url="/blog/", image=thumb_abs(POSTS[0]["slug"])),
+              {"@context": "https://schema.org", "@type": "Blog",
+               "name": "%s 배관 생활정보" % BRAND, "url": SITE + "/blog/", "inLanguage": "ko-KR",
+               "blogPost": [{"@type": "BlogPosting", "headline": p["title"],
+                             "url": SITE + post_href(p["slug"]), "datePublished": p["date"],
+                             "image": thumb_abs(p["slug"]),
+                             "author": {"@type": "Person", "name": OWNER}} for p in POSTS]},
+              itemlist_schema("블로그 글", [(p["title"], post_href(p["slug"])) for p in POSTS]),
+              breadcrumb_schema([("홈", "/"), ("블로그", "/blog/")])]
+
+    html = head("배관 생활정보 블로그 | %s" % BRAND,
+                "하수구막힘 자가조치, 수도요금 누수 진단, 아랫집 누수 대응까지 현장 22년 기준 안내",
+                0, "/blog/", schema, thumb_abs(POSTS[0]["slug"]))
+    html += header(0, "blog")
+    html += page_hero(
+        "BLOG", "부르기 전에 읽으면 돈이 덜 드는 글",
+        "직접 해결되는 상황이면 그렇다고 씁니다. 위험한 자가 조치는 이유까지 적어 말립니다. "
+        "현장에서 반복해 확인한 것만 담았습니다.",
+        ["현장 22년", "%d편" % len(POSTS), "%s 대표 검수" % OWNER],
+        breadcrumb_html([("블로그", "")], 0),
+        None, "", "%s 배관 생활정보 블로그" % BRAND, 0,
+        img_src=thumb_src(POSTS[0]["slug"]), img_ratio=" page-hero__figure--wide")
+    html += """
+<section class="section">
+  <div class="wrap">
+    <div class="grid g-3">%(cards)s</div>
+  </div>
+</section>
+""" % dict(cards=cards)
+    html += topic_block("BY SYMPTOM", "증상으로 바로 찾기",
+                        "지금 상황과 가장 가까운 문장을 누르면 담당 시공 안내로 넘어갑니다.",
+                        symptom_topic_links(), wash=True)
+    html += "\n</main>"
+    html += footer(0)
+    write("/blog/", html)
+    register("/blog/", "0.9", "weekly", "blog")
+
+
 # ------------------------------------------------------------------ sitemap
 def xesc(s):
     return esc(s).replace("'", "&apos;")
@@ -1888,7 +2123,9 @@ def build_rss():
     """네이버 서치어드바이저 RSS 제출용. 핵심 페이지만 담는다(RSS 는 '새 글' 알림 용도)."""
     import datetime
     base = datetime.datetime.strptime(BUILD_DATE, "%Y-%m-%d")
-    items = [("/", "%s | 전국 배관공사·하수구막힘 24시간 출동" % BRAND,
+    items = [(post_href(p["slug"]), p["title"], p["desc"]) for p in POSTS]
+    items += [("/blog/", "배관 생활정보 블로그", "부르기 전에 읽으면 돈이 덜 드는 글")]
+    items += [("/", "%s | 전국 배관공사·하수구막힘 24시간 출동" % BRAND,
               "전국 16개 시·도 %s개 읍·면·동 24시간 출동. 방문 견적 무료, 확정 금액 승인 후 시공." % DONG_FMT),
              ("/services/", "전체 서비스 %d가지" % len(SERVICES), "누수·막힘·교체 전 항목과 평균 비용"),
              ("/pricing/", "배관공사·하수구막힘 비용 안내", "시공 항목별 평균 비용과 소요 시간 공개"),
@@ -2019,6 +2256,11 @@ def main():
                 for d in c["dongs"]:
                     build_dong(r, c, None, d, c["dongs"])
 
+    build_blog_index()
+    for i, post in enumerate(POSTS):
+        build_post(post, POSTS[i - 1] if i > 0 else POSTS[-1],
+                   POSTS[i + 1] if i + 1 < len(POSTS) else POSTS[0])
+
     build_pricing()
     build_gallery()
     build_reviews()
@@ -2033,7 +2275,7 @@ def main():
     from collections import Counter
     cnt = Counter(g for _p, _pr, _f, g in PAGES)
     print("총 %d개 페이지" % len(PAGES))
-    for k in ("main", "services", "sido", "sgg", "dong"):
+    for k in ("main", "blog", "services", "sido", "sgg", "dong"):
         if cnt.get(k):
             print("  %-9s %d" % (k, cnt[k]))
     print("sitemap %d개 + 색인 · rss %d건 · robots · IndexNow 키" % (len(sm), n_rss))
