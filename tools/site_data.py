@@ -7,7 +7,7 @@ TAGLINE = "전국 24시간 배관 출동"
 TEL = "0508-4260-3312"
 TEL_HREF = "tel:050842603312"
 TEL_INTL = "+82-508-4260-3312"
-SITE = "https://speedpipe.netlify.app"
+SITE = "https://speedpipe.pages.dev"
 OWNER = "김성훈"
 YEAR = 2026
 
