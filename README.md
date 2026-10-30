@@ -259,7 +259,7 @@ python3 tools/build_site.py
 
 ## 색인 — 가장 빠르게 넣는 순서
 
-도메인은 `https://speedpipe.pages.dev` 로 설정되어 있습니다
+도메인은 `https://speedpipe.netlify.app` 로 설정되어 있습니다
 (`tools/site_data.py` 의 `SITE`). 자체 도메인을 붙이면 이 값을 바꾸고 다시 빌드하세요.
 
 빌드가 만들어 주는 파일:
@@ -277,10 +277,10 @@ python3 tools/build_site.py
 키 파일과 사이트맵이 실제 주소에서 열려야 다음 단계가 동작합니다.
 
 ```
-https://speedpipe.pages.dev/robots.txt
-https://speedpipe.pages.dev/sitemap.xml
-https://speedpipe.pages.dev/rss.xml
-https://speedpipe.pages.dev/a7f3c1d94b2e48a6b05c7e19d38f6042.txt
+https://speedpipe.netlify.app/robots.txt
+https://speedpipe.netlify.app/sitemap.xml
+https://speedpipe.netlify.app/rss.xml
+https://speedpipe.netlify.app/a7f3c1d94b2e48a6b05c7e19d38f6042.txt
 ```
 
 ### 2단계 — IndexNow 로 즉시 알림 (네이버 · 빙 · Yandex)
@@ -302,7 +302,7 @@ python3 tools/indexnow.py --dry-run      # 보내지 않고 확인만
 
 ### 3단계 — 네이버 서치어드바이저
 
-1. [서치어드바이저](https://searchadvisor.naver.com) → 사이트 등록 → `https://speedpipe.pages.dev`
+1. [서치어드바이저](https://searchadvisor.naver.com) → 사이트 등록 → `https://speedpipe.netlify.app`
 2. 소유 확인 → **HTML 태그** 방식 선택 → `content` 값 복사
 3. `tools/site_data.py` 의 `VERIFY["naver-site-verification"]` 에 붙여넣고 `python3 tools/build_site.py` → 재배포
 4. 요청 → **사이트맵 제출** 에 `sitemap.xml`
@@ -311,7 +311,7 @@ python3 tools/indexnow.py --dry-run      # 보내지 않고 확인만
 
 ### 4단계 — 구글 Search Console
 
-1. [Search Console](https://search.google.com/search-console) → 속성 추가 → **URL 접두어** → `https://speedpipe.pages.dev/`
+1. [Search Console](https://search.google.com/search-console) → 속성 추가 → **URL 접두어** → `https://speedpipe.netlify.app/`
 2. 소유 확인 → HTML 태그 → `VERIFY["google-site-verification"]` 에 넣고 재빌드·재배포
 3. Sitemaps → `sitemap.xml` 제출
 4. URL 검사 → 홈·주요 시·도·시공 페이지에 **색인 생성 요청** (하루 10여 건 제한)
